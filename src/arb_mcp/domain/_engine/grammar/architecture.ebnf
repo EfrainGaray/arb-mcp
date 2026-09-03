@@ -1,0 +1,70 @@
+(* Grammar of the architecture language — normative and implementation-neutral.
+   Written once, and from here parsers can be generated for Java, Python,
+   TypeScript or Go. Structurizr has no such file: its language is implicit in
+   1611 lines of hand-written parser, so nobody else can implement it with
+   any guarantee of agreement. *)
+
+model           = "model" , string , [ string ] , [ "scope" , string ] , model_body ;
+model_body      = "{" , { spec | node | relation | view } , "}" ;
+
+(* ── the spec: this is where C4 stops being hardwired ── *)
+spec            = "spec" , "{" , { node_decl | relation_decl } , "}" ;
+node_decl       = "node" , identifier , [ string ] , [ node_options ] ;
+node_options    = "{" , { "contains" , ident_list
+                        | "leaf"                      (* admits nothing inside *)
+                        | "requires" , ident_list
+                        | style } , "}" ;
+
+(* The distinction matters and the schema already made it: without "contains"
+   a node admits any type inside; with "leaf" it admits none. The language
+   could not express the second, and the round-trip test exposed it. *)
+relation_decl   = "relation" , identifier , [ string ] , [ relation_options ] ;
+relation_options= "{" , { "from" , ident_list
+                        | "to" , ident_list
+                        | "directed" , boolean
+                        | style } , "}" ;
+
+(* ── nodes: a declared type, a name, and whatever fits inside ── *)
+node            = [ identifier , "=" ] , identifier , string ,
+                  [ string ] , [ node_body ] ;
+node_body       = "{" , { property | doc | origin | node | relation } , "}" ;
+
+(* Where the fact came from: tells the measured from the assumed. A model
+   extracted from a machine can state what produced it and when. *)
+origin          = "origin" , "{" , { "tool" , string
+                                   | "command" , string
+                                   | "date" , string } , "}" ;
+property        = ( "technology" | "tags" | "description" ), value
+                | identifier , string ;
+
+(* ── relations: good for everything, including tying a decision to what it decides ── *)
+relation        = reference , arrow , reference , [ string ] , [ relation_body ] ;
+arrow           = "->" | "-" , identifier , "->" ;
+relation_body   = "{" , { property | origin } , "}" ;
+
+(* ── docs and decisions live in the model, not beside it ── *)
+doc             = "doc" , string , long_text , [ doc_attributes ] ;
+doc_attributes  = "{" , { "date" , string | "format" , string } , "}" ;
+
+(* The date goes in a block and not loose: the round-trip test exposed that
+   'doc "t" """x""" date "2026-08-19"' is ambiguous, because 'date "..."'
+   also parses as a property of the node holding the doc. An ambiguous
+   grammar is useless as a standard: two correct implementations would
+   disagree. *)
+
+(* ── views: queries, not lists ── *)
+view            = "view" , identifier , string , "{" ,
+                  { "include" , query | "exclude" , query } , "}" ;
+query           = "*"
+                | "type" , identifier
+                | "tag" , string
+                | "inside" , reference , [ integer ]
+                | "neighbors" , reference , [ integer ] ;
+
+(* ── lexis ── *)
+reference       = identifier , { "." , identifier } ;
+ident_list      = identifier , { "," , identifier } ;
+identifier      = letter , { letter | digit | "_" | "-" } ;
+string          = '"' , { character } , '"' ;
+long_text       = '"""' , { character } , '"""' ;
+comment         = "//" , { character } , end_of_line ;

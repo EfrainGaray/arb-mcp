@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://efraingaray.com/spec/architecture/1.0/architecture.schema.json",
+  "title": "Architecture model",
+  "description": "Interchange format for architecture as code, independent of notation. The schema is normative: any authoring language must convert to this without loss.",
+  "type": "object",
+  "required": ["version", "spec", "nodes"],
+  "additionalProperties": false,
+
+  "properties": {
+    "version": { "const": "1.0" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "scope": {
+      "description": "What this model covers. Structurizr calls it scope and demands it: without it, a reader cannot tell a landscape from a single system.",
+      "enum": ["landscape", "system", "deployment", "undefined"]
+    },
+
+    "spec": {
+      "description": "The types this model uses. This is where C4, UML or any other notation stops being hardwired and becomes a declaration.",
+      "type": "object",
+      "required": ["nodeTypes"],
+      "additionalProperties": false,
+      "properties": {
+        "extends": {
+          "description": "URL of another spec this one refines. Lets us publish 'c4.json' or 'uml.json' and start from there.",
+          "type": "string", "format": "uri"
+        },
+        "nodeTypes": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/identifier" },
+          "additionalProperties": { "$ref": "#/$defs/nodeType" }
+        },
+        "relationTypes": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/identifier" },
+          "additionalProperties": { "$ref": "#/$defs/relationType" }
+        }
+      }
+    },
+
+    "nodes": {
+      "description": "Everything is a node: a system, a UML class, a decision or a document. What tells them apart is their type, not their position in a class hierarchy.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+
+    "relations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/relation" }
+    },
+
+    "views": {
+      "description": "A view states WHAT to include, it does not enumerate elements: it stays correct as the model grows.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/view" }
+    }
+  },
+
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+      "maxLength": 64
+    },
+
+    "nodeType": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string" },
+        "contains": {
+          "description": "Which types it admits inside. Absent = any, which is how free nesting is achieved. Empty list = it is a leaf.",
+          "type": "array", "items": { "$ref": "#/$defs/identifier" }
+        },
+        "requires": {
+          "description": "Fields a node of this type must carry. This is what makes the model checkable.",
+          "type": "array", "items": { "type": "string" }
+        },
+        "style": { "$ref": "#/$defs/style" }
+      }
+    },
+
+    "relationType": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string" },
+        "from": {
+          "description": "Node types admitted as source. Absent = any.",
+          "type": "array", "items": { "$ref": "#/$defs/identifier" }
+        },
+        "to": {
+          "type": "array", "items": { "$ref": "#/$defs/identifier" }
+        },
+        "directed": { "type": "boolean", "default": true },
+        "style": { "$ref": "#/$defs/style" }
+      }
+    },
+
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "technology": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "properties": {
+          "type": "object", "additionalProperties": { "type": "string" }
+        },
+        "nodes": {
+          "description": "Nesting with no depth limit.",
+          "type": "array", "items": { "$ref": "#/$defs/node" }
+        },
+        "docs": {
+          "type": "array", "items": { "$ref": "#/$defs/doc" }
+        },
+        "origin": { "$ref": "#/$defs/origin" }
+      }
+    },
+
+    "relation": {
+      "type": "object",
+      "required": ["from", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "$ref": "#/$defs/identifier" },
+        "from": { "$ref": "#/$defs/identifier" },
+        "to": { "$ref": "#/$defs/identifier" },
+        "description": { "type": "string" },
+        "technology": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "properties": {
+          "type": "object", "additionalProperties": { "type": "string" }
+        },
+        "origin": { "$ref": "#/$defs/origin" }
+      }
+    },
+
+    "doc": {
+      "type": "object",
+      "required": ["title", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "format": { "enum": ["markdown", "asciidoc", "text"], "default": "markdown" },
+        "content": { "type": "string" },
+        "date": { "type": "string", "format": "date" }
+      }
+    },
+
+    "origin": {
+      "description": "Where this fact came from. A model extracted from a machine can state what produced it and when, to tell what was measured from what was assumed.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "type": "string" },
+        "command": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape": { "type": "string" },
+        "color": { "type": "string" },
+        "icon": { "type": "string", "format": "uri-reference" },
+        "line": { "enum": ["solid", "dashed", "dotted"] }
+      }
+    },
+
+    "view": {
+      "type": "object",
+      "required": ["id", "title", "include"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "include": {
+          "description": "A query, not a list. '*' is everything; also by type, by tag, or the neighbors of a node.",
+          "type": "array", "minItems": 1,
+          "items": { "$ref": "#/$defs/query" }
+        },
+        "exclude": { "type": "array", "items": { "$ref": "#/$defs/query" } }
+      }
+    },
+
+    "query": {
+      "oneOf": [
+        { "const": "*" },
+        { "type": "object", "additionalProperties": false, "required": ["type"],
+          "properties": { "type": { "$ref": "#/$defs/identifier" } } },
+        { "type": "object", "additionalProperties": false, "required": ["tag"],
+          "properties": { "tag": { "type": "string" } } },
+        { "type": "object", "additionalProperties": false, "required": ["inside"],
+          "properties": {
+            "inside": { "$ref": "#/$defs/identifier" },
+            "depth": { "type": "integer", "minimum": 1, "default": 1 } } },
+        { "type": "object", "additionalProperties": false, "required": ["neighbors"],
+          "properties": {
+            "neighbors": { "$ref": "#/$defs/identifier" },
+            "hops": { "type": "integer", "minimum": 1, "default": 1 } } }
+      ]
+    }
+  }
+}

@@ -1,0 +1,50 @@
+// Reference implementation of the EBNF grammar, so it can be exercised today.
+// The .ebnf is the normative one; this is a checkable realization of it.
+
+model: "model" STRING [STRING] ["scope" STRING] "{" item* "}"
+?item: spec | node | relation | view
+
+spec: "spec" "{" decl* "}"
+?decl: node_decl | relation_decl
+node_decl: "node" IDENT [STRING] ["{" node_option* "}"]
+node_option: "contains" ident_list -> contains
+           | "leaf"                -> leaf
+           | "requires" ident_list -> requires
+relation_decl: "relation" IDENT [STRING] ["{" relation_option* "}"]
+relation_option: "from" ident_list -> from_types
+               | "to" ident_list   -> to_types
+
+node: [IDENT "="] IDENT STRING [STRING] ["{" node_body* "}"]
+?node_body: property | doc | origin | node | relation
+property: IDENT STRING
+doc: "doc" STRING LONG_TEXT ["{" doc_attribute* "}"]
+doc_attribute: "date" STRING   -> doc_date
+             | "format" STRING -> doc_format
+origin: "origin" "{" origin_field* "}"
+origin_field: "tool" STRING    -> origin_tool
+            | "command" STRING -> origin_command
+            | "date" STRING    -> origin_date
+
+relation: REF ARROW REF [STRING] ["{" relation_body* "}"]
+?relation_body: property | origin
+ARROW: /-(?:[a-zA-Z_][a-zA-Z0-9_-]*)?->/
+
+view: "view" IDENT STRING "{" query_line* "}"
+query_line: "include" query -> include
+          | "exclude" query -> exclude
+?query: "*"                       -> all
+      | "type" IDENT              -> by_type
+      | "tag" STRING              -> by_tag
+      | "inside" REF [INT_LIT]    -> inside
+      | "neighbors" REF [INT_LIT] -> neighbors
+
+ident_list: IDENT ("," IDENT)*
+REF: /[a-zA-Z_][a-zA-Z0-9_-]*(\.[a-zA-Z_][a-zA-Z0-9_-]*)*/
+IDENT: /[a-zA-Z_][a-zA-Z0-9_-]*/
+STRING: /"[^"]*"/
+LONG_TEXT: /"""(.|\n)*?"""/
+INT_LIT: /[0-9]+/
+COMMENT: /\/\/[^\n]*/
+%import common.WS
+%ignore WS
+%ignore COMMENT
