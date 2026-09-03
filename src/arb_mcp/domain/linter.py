@@ -32,6 +32,36 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
             Finding(Severity.ERROR, "model.empty", "The model declares no elements.")
         )
 
+    # Integrity the JSON Schema cannot express: every id unique, every relation
+    # endpoint an element that exists. Without these a dangling relation reads as
+    # may_merge=true yet cannot be drawn, and a duplicate id silently overwrites a
+    # diagram cell. Deterministic, blocking, in the audited facade.
+    ids: list[str] = []
+
+    def _collect(nodes: list[dict[str, Any]]) -> None:
+        for n in nodes:
+            ids.append(n["id"])
+            _collect(n.get("nodes", []))
+
+    _collect(model.get("nodes", []))
+    present = set(ids)
+    for dup in sorted({i for i in ids if ids.count(i) > 1}):
+        findings.append(
+            Finding(Severity.ERROR, "model.id.duplicate",
+                    f'The id "{dup}" is declared by more than one element.')
+        )
+    for rel in model.get("relations", []):
+        if "implied" in (rel.get("tags") or []):
+            continue
+        for end in ("from", "to"):
+            ref = rel.get(end)
+            if ref not in present:
+                findings.append(
+                    Finding(Severity.ERROR, "model.relation.endpoint",
+                            f'A relation names {end} "{ref}", which is not an element '
+                            f'in the model.')
+                )
+
     findings += [
         Finding(Severity(sev), rule, message)
         for sev, rule, message in inspections.inspect(subject)
