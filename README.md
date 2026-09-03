@@ -22,34 +22,37 @@ validation path by construction.
     pip install -e '.[dev]'
     pytest && ruff check src/ && mypy
 
-## The tools (how you use it)
+## The tools (how Kiro uses it)
 
-The server exposes three MCP tools. A client (Kiro, Claude, any MCP host) calls
-them by name; every task is one call.
+**This MCP has no LLM and calls none.** Kiro does the thinking — it reads the
+epic, drafts the C4 elements — and drives these deterministic tools. Four tools:
 
-| I want to… | Tool | Call |
+| Kiro wants to… | Tool | Call |
 |---|---|---|
-| Create a design from a prompt / epic / file | `generate_model` | `generate_model(description, stories?, name?)` → `{model, validation}` |
-| Validate a design (the merge gate) | `validate_model` | `validate_model(source)` → `{may_merge, blocking_count, findings}` |
-| Get the `.arch` DSL of a design | `convert_model` | `convert_model(source, to="arch")` → DSL text |
-| Get the Structurizr DSL | `convert_model` | `convert_model(source, to="structurizr")` → DSL text |
-| Get the drawio C4 diagrams | `convert_model` | `convert_model(source, to="drawio")` → `{views:[{level,scope,name,xml}]}` |
+| Know what shape to draft | `describe_contract` | `describe_contract()` -> `{spec, schema}` |
+| Turn its draft into a validated model | `build_model_tool` | `build_model_tool(nodes, relations?, name?)` -> `{ok, model, validation}` |
+| Validate a design (the merge gate) | `validate_model` | `validate_model(source)` -> `{may_merge, blocking_count, findings}` |
+| Get the diagrams / DSLs | `convert_model` | `convert_model(source, to)` -> drawio views / `.arch` / Structurizr DSL |
 
-`source` is a design in any accepted surface — `.arch`, canonical schema JSON,
-or Structurizr DSL — the format is detected. Only `validate_model` decides a
-merge; `generate_model` is non-blocking and returns the same validation report
-so you see what the draft still breaks. drawio always comes back as **separate
-C4 views** (one C1, one C2 per system, one C3 per container), never tabs.
+Typical loop, all inside Kiro:
 
-Typical chain: `generate_model` → read `validation` → fix → `convert_model
-to="drawio"` for the diagrams and `to="structurizr"` for the repo DSL.
+1. `describe_contract()` — Kiro learns the allowed C4 types and the schema.
+2. Kiro drafts `nodes`/`relations` from the epic (its own reasoning).
+3. `build_model_tool(nodes, relations)` — the MCP injects the fixed spec, holds
+   it to the schema, and returns the model plus its validation report. A
+   malformed draft comes back with the exact schema failure, which Kiro fixes.
+4. `convert_model(model, to="drawio")` for the separate C1/C2/C3 diagrams and
+   `to="structurizr"` for the repo DSL.
+
+`source` is any accepted surface — `.arch`, canonical schema JSON, or Structurizr
+DSL; the format is detected. Only `validate_model` decides a merge. drawio always
+comes back as **separate C4 views** (one C1, one C2 per system, one C3 per
+container), never tabs.
 
 ### Run it
 
-    # stdio (local, for an editor / Kiro power)
-    arb-mcp
+    arb-mcp                                   # stdio
     # or: python -m arb_mcp.infra.mcp.stdio_server
 
-Register it as a Kiro power in `~/.kiro/settings/mcp.json`. Generation needs
-`ARB_LLM_BASE_URL` and `ARB_LLM_MODEL` in the environment (any OpenAI-compatible
-endpoint — a local llama-server included).
+Register it as a Kiro power in `~/.kiro/settings/mcp.json`. No LLM environment is
+needed — the host provides the intelligence.
