@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "name": "Despliegue en AWS",
+  "scope": "deployment",
+  "spec": {
+    "nodeTypes": {
+      "deploymentNode":     { "description": "Where something runs", "contains": ["deploymentNode", "containerInstance", "infrastructureNode"] },
+      "infrastructureNode": { "description": "Load balancer, DNS, firewall", "contains": [] },
+      "containerInstance":  { "description": "A running instance of a container", "contains": [] }
+    },
+    "relationTypes": {
+      "route": { "description": "Routes traffic to", "from": ["infrastructureNode"] },
+      "uses":  { "from": ["containerInstance"] }
+    }
+  },
+  "nodes": [
+    { "id": "aws", "type": "deploymentNode", "name": "Amazon Web Services", "technology": "AWS", "nodes": [
+      { "id": "region", "type": "deploymentNode", "name": "eu-west-1", "technology": "Region", "nodes": [
+        { "id": "alb", "type": "infrastructureNode", "name": "Load Balancer", "technology": "AWS ALB" },
+        { "id": "ecs", "type": "deploymentNode", "name": "ECS Cluster", "technology": "Fargate", "nodes": [
+          { "id": "api", "type": "containerInstance", "name": "API", "technology": "FastAPI" }
+        ]},
+        { "id": "rds", "type": "deploymentNode", "name": "RDS", "technology": "PostgreSQL 16", "nodes": [
+          { "id": "db", "type": "containerInstance", "name": "Ledger DB", "technology": "PostgreSQL" }
+        ]}
+      ]}
+    ]}
+  ],
+  "relations": [
+    { "from": "alb", "to": "api", "type": "route", "description": "HTTPS" },
+    { "from": "api", "to": "db", "type": "uses", "description": "SQL" }
+  ]
+}

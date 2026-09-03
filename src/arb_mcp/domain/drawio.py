@@ -360,55 +360,69 @@ def to_c4_views(model: dict[str, Any]) -> list[dict[str, Any]]:
     return views
 
 
+def _flat_level(model: dict[str, Any]) -> str:
+    t = set((model.get("spec") or {}).get("nodeTypes") or {})
+    if "actor" in t or "useCase" in t:
+        return "UML"
+    if "deploymentNode" in t:
+        return "Deployment"
+    return "Diagram"
+
+
+_FLAT_PAD, _FLAT_HDR, _FLAT_GAP = 24, 36, 20
+
+
+def _flat_measure(node: dict[str, Any]) -> tuple[int, int]:
+    """Bottom-up size of a node: a leaf is a fixed box; a container grows to fit
+    its stacked children at any depth."""
+    kids = node.get("nodes", [])
+    if not kids:
+        return (70, 90) if node.get("type") == "actor" else (200, 80)
+    sizes = [_flat_measure(k) for k in kids]
+    w = max(s[0] for s in sizes) + 2 * _FLAT_PAD
+    h = _FLAT_HDR + sum(s[1] for s in sizes) + _FLAT_GAP * (len(kids) - 1) + _FLAT_PAD
+    return w, h
+
+
 def _view_flat(model: dict[str, Any]) -> dict[str, Any]:
-    """A single diagram for any non-C4 notation: one shape per element by its
-    type, children nested in a dashed boundary, relations as edges. The C4
-    lifting does not apply here — every declared element is drawn as itself."""
+    """A single diagram for any non-C4 notation (UML, deployment, …): every
+    element drawn as itself, containers nesting their children to ARBITRARY
+    depth, relations as edges. No lifting is lost — every node is emitted."""
     _, parent = _index(model)
     cells: list[str] = []
     emitted: set[str] = set()
-    y = 40
 
-    def emit(node: dict[str, Any], container: str, x: int) -> None:
-        nonlocal y
-        ntype = node.get("type", "")
-        kids = node.get("nodes", [])
+    def place(node: dict[str, Any], x: int, y: int, container: str) -> None:
         emitted.add(node["id"])
-        if kids:
-            top = y
-            cells.append(_vertex(node["id"], _label(node), _UML_BOUNDARY, x, top, 300,
-                                 60 + len(kids) * 110, container))
-            cy = top + 40
-            for k in kids:
-                cells.append(_vertex(k["id"], _label(k),
-                                     _UML_STYLE.get(k.get("type", ""), _UML_FALLBACK),
-                                     30, cy - top, 200, 70, node["id"]))
-                emitted.add(k["id"])
-                cy += 110
-            y = top + 60 + len(kids) * 110 + 30
-        else:
-            w, h = (60, 90) if ntype == "actor" else (150, 70)
-            cells.append(_vertex(node["id"], _label(node),
-                                 _UML_STYLE.get(ntype, _UML_FALLBACK), x, y, w, h, container))
-            y += h + 40
+        w, h = _flat_measure(node)
+        kids = node.get("nodes", [])
+        if not kids:
+            style = _UML_STYLE.get(node.get("type", ""), _UML_FALLBACK)
+            cells.append(_vertex(node["id"], _label(node), style, x, y, w, h, container))
+            return
+        cells.append(_vertex(node["id"], _label(node), _UML_BOUNDARY, x, y, w, h, container))
+        cy = _FLAT_HDR
+        for k in kids:  # children are placed in the container's own coordinates
+            _kw, kh = _flat_measure(k)
+            place(k, _FLAT_PAD, cy, node["id"])
+            cy += kh + _FLAT_GAP
 
-    actors = [n for n in model.get("nodes", []) if n.get("type") == "actor"]
-    others = [n for n in model.get("nodes", []) if n.get("type") != "actor"]
-    for n in actors:
-        emit(n, "1", 40)
-    y = 40
-    for n in others:
-        emit(n, "1", 360)
+    ty = 40
+    for n in model.get("nodes", []):
+        _w, h = _flat_measure(n)
+        place(n, 40, ty, "1")
+        ty += h + 50
 
-    # only two levels are drawn (top + direct children); a deeper endpoint lifts
-    # to the nearest drawn ancestor so no edge points at a cell that is not there
+    # every node is emitted, so an endpoint resolves to itself; a stray deeper id
+    # (none here) would lift to the nearest drawn ancestor
     def resolve(nid: str) -> str | None:
         return _lift_to(nid, emitted, parent)
 
     cells += _edges_between(model, resolve)
-    return {"level": "UML", "scope": "use-cases",
-            "name": f"{model.get('name', 'Model')} — {model.get('scope', 'diagram')}",
-            "xml": _mxfile("UML", cells)}
+    level = _flat_level(model)
+    return {"level": level, "scope": model.get("scope", "diagram"),
+            "name": f"{model.get('name', 'Model')} — {level}",
+            "xml": _mxfile(level, cells)}
 
 
 def to_views(model: dict[str, Any]) -> list[dict[str, Any]]:
