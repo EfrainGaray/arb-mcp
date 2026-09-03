@@ -21,7 +21,7 @@ def _q(text: Any) -> str:
     # Structurizr DSL has no escape for a double quote inside a string, so a name
     # carrying one would silently corrupt on reload. Fold it to an apostrophe:
     # lossy but legible and guaranteed to round-trip.
-    return '"' + str(text).replace('"', "'") + '"'
+    return '"' + str(text).replace('"', "'").replace('\n', ' ').replace('\r', ' ') + '"'
 
 
 def _element(node: dict[str, Any], depth: int, lines: list[str]) -> None:
@@ -73,7 +73,12 @@ def to_structurizr(model: dict[str, Any]) -> str:
     for rel in model.get("relations", []):
         if "implied" in (rel.get("tags") or []):
             continue
-        if rel["from"] not in by_id or rel["to"] not in by_id:
+        # both endpoints must be C4 elements that were actually declared above;
+        # a relation to a decision (an ADR, not an element) would emit an
+        # undeclared identifier that reloads dangling with a mutated type
+        if by_id.get(rel["from"], {}).get("type") not in _C4_ELEMENT:
+            continue
+        if by_id.get(rel["to"], {}).get("type") not in _C4_ELEMENT:
             continue
         line = f'        {rel["from"]} -> {rel["to"]}'
         if rel.get("description"):
