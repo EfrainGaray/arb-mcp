@@ -58,7 +58,21 @@ def load(text: str) -> dict[str, Any]:
         raise ModelError(str(exc)) from exc
 
     validate_schema(model)
+    _check_depth(model.get("nodes", []))
     return model
+
+
+_MAX_DEPTH = 32
+
+
+def _check_depth(nodes: list[dict[str, Any]], depth: int = 1) -> None:
+    """Bound nesting so agent-generated input cannot blow the recursion limit in
+    the exporters. Deep enough for any real architecture, shallow enough to fail
+    as a ModelError instead of a raw RecursionError."""
+    if depth > _MAX_DEPTH:
+        raise ModelError(f"model nesting exceeds {_MAX_DEPTH} levels")
+    for n in nodes:
+        _check_depth(n.get("nodes", []), depth + 1)
 
 
 def validate_schema(model: dict[str, Any]) -> None:

@@ -2,7 +2,7 @@
 import json
 
 from arb_mcp.application.build_model import build_model
-from arb_mcp.application.convert_model import convert_model, drawio_views
+from arb_mcp.application.convert_model import drawio_views
 from arb_mcp.application.validate_model import validate_model
 
 
@@ -57,3 +57,19 @@ def test_build_model_does_not_mutate_callers_relations():
     rels = [{"from": "a", "to": "b"}]
     build_model([{"id": "a", "type": "person", "name": "A"}], rels)
     assert "type" not in rels[0]  # caller's dict untouched
+
+
+def test_excessive_nesting_is_a_model_error():
+    """Fable B2: agent-generated deep nesting fails as ModelError, not RecursionError."""
+    from arb_mcp.domain.loading import ModelError, load
+    node = {"id": "n0", "type": "deploymentNode", "name": "n"}
+    cur = node
+    for i in range(1, 40):
+        child = {"id": f"n{i}", "type": "deploymentNode", "name": "n"}
+        cur["nodes"] = [child]; cur = child
+    model = json.dumps({"version": "1.0", "name": "x", "scope": "deployment",
+                        "spec": {"nodeTypes": {"deploymentNode": {"contains": ["deploymentNode"]}}},
+                        "nodes": [node], "relations": []})
+    import pytest
+    with pytest.raises(ModelError, match="nesting"):
+        load(model)
