@@ -22,7 +22,18 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
     subject = model
     if include_implied:
         subject, _ = implied.derive(model)
-    return [
+
+    findings: list[Finding] = []
+    # A design with no elements is schema-valid but says nothing; it must never
+    # pass a bank's gate. This rule lives here, in the audited facade, not in the
+    # vendored engine.
+    if not model.get("nodes"):
+        findings.append(
+            Finding(Severity.ERROR, "model.empty", "The model declares no elements.")
+        )
+
+    findings += [
         Finding(Severity(sev), rule, message)
         for sev, rule, message in inspections.inspect(subject)
     ]
+    return findings
