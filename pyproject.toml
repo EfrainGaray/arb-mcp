@@ -28,6 +28,9 @@ target-version = "py311"
 extend-exclude = ["src/arb_mcp/domain/_engine"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+[tool.ruff.lint.per-file-ignores]
+# tests read fixtures inline and use throwaway multi-statement setup
+"tests/**" = ["SIM115", "E702"]
 
 [tool.mypy]
 python_version = "3.11"
