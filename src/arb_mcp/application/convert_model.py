@@ -10,10 +10,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..domain import drawio, loading
+from ..domain import drawio, loading, structurizr
 from ..domain._engine import convert as _arch
 
-FORMATS = ("drawio", "arch")
+FORMATS = ("drawio", "arch", "structurizr")
 
 
 def drawio_views(model: dict[str, Any]) -> list[dict[str, Any]]:
@@ -29,6 +29,8 @@ def convert_model(model: dict[str, Any], fmt: str) -> str:
     if fmt == "arch":
         arch: str = _arch.json_to_text(model)
         return arch
+    if fmt == "structurizr":
+        return structurizr.to_structurizr(model)
     raise ValueError(f"unknown format {fmt!r}; known: {', '.join(FORMATS)}")
 
 
