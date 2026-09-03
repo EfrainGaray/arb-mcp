@@ -17,7 +17,7 @@ from typing import Any
 from ..domain import loading
 from .validate_model import ValidationReport, validate_model
 
-_C4_SPEC: dict[str, Any] = json.loads(
+C4_SPEC: dict[str, Any] = json.loads(
     (files("arb_mcp.domain.specs") / "c4.json").read_text("utf-8")
 )
 
@@ -50,8 +50,8 @@ def build_model(
 
     Raises :class:`arb_mcp.domain.loading.ModelError` if the parts do not form a
     schema-valid model — the deterministic feedback the caller acts on."""
-    spec = spec or _C4_SPEC
-    relations = relations or []
+    spec = spec or C4_SPEC
+    relations = [dict(r) for r in (relations or [])]
     _normalize_relations(relations, spec)
     model = {
         "version": "1.0",
