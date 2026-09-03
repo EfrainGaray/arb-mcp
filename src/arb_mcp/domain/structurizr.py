@@ -18,7 +18,10 @@ _WITH_TECH = {"container", "component"}
 
 
 def _q(text: Any) -> str:
-    return '"' + str(text).replace("\\", "\\\\").replace('"', '\\"') + '"'
+    # Structurizr DSL has no escape for a double quote inside a string, so a name
+    # carrying one would silently corrupt on reload. Fold it to an apostrophe:
+    # lossy but legible and guaranteed to round-trip.
+    return '"' + str(text).replace('"', "'") + '"'
 
 
 def _element(node: dict[str, Any], depth: int, lines: list[str]) -> None:
