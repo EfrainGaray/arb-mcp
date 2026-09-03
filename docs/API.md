@@ -2,14 +2,14 @@
 
 Every call and response below is **captured from the running server** over the MCP stdio protocol, not written by hand. Regenerate with `python docs/gen_api.py`.
 
-Transport: stdio. A host (Kiro) calls a tool by name with a JSON arguments object and receives a single text payload — JSON for every tool except `convert_model to=arch|structurizr`, which returns the raw DSL.
+Transport: stdio. A host (Kiro) calls a tool by name with a JSON arguments object and receives a single text payload — JSON for every tool except `convert_model to=structurizr`, which returns the raw DSL.
 
 ## Tools
 
 - **`describe_contract`** — The contract to build a design against: the C4 spec (allowed node and
 - **`build_model_tool`** — Assemble a canonical model from drafted C4 elements and validate it.
 - **`validate_model`** — Validate a design and report whether it may merge.
-- **`convert_model`** — Export a design to another surface. ``to`` is one of: drawio, arch,
+- **`convert_model`** — Export a design to another surface. ``to`` is one of: drawio, structurizr.
 
 ---
 
@@ -175,7 +175,7 @@ Kiro hands the elements it drafted from the epic; the server injects the fixed C
 
 ## `validate_model`
 
-The merge gate. `source` may be `.arch`, canonical JSON, or Structurizr DSL — format detected.
+The merge gate. `source` may be canonical JSON or Structurizr DSL — format detected.
 
 **Request**
 ```json
@@ -222,7 +222,7 @@ The merge gate. `source` may be `.arch`, canonical JSON, or Structurizr DSL — 
 
 ## `convert_model`
 
-Exports a design. `to` ∈ {`drawio`, `arch`, `structurizr`}. drawio returns SEPARATE C4 views (one C1, one C2 per system, one C3 per container), never tabs.
+Exports a design. `to` ∈ {`drawio`, `structurizr`}. drawio returns SEPARATE C4 views (one C1, one C2 per system, one C3 per container), never tabs.
 
 **Request** (drawio)
 ```json
@@ -294,10 +294,9 @@ workspace "Billing" {
 ```json
 {
   "ok": false,
-  "error": "unknown format 'png'; known: drawio, arch, structurizr",
+  "error": "unknown format 'png'; known: drawio, structurizr",
   "formats": [
     "drawio",
-    "arch",
     "structurizr"
   ]
 }

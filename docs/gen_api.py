@@ -25,8 +25,7 @@ async def main():
               "`python docs/gen_api.py`.\n")
     md.append("Transport: stdio. A host (Kiro) calls a tool by name with a JSON "
               "arguments object and receives a single text payload — JSON for every "
-              "tool except `convert_model to=arch|structurizr`, which returns the raw "
-              "DSL.\n")
+              "tool except `convert_model to=structurizr`, which returns the raw DSL.\n")
 
     async with stdio_client(p) as (r, w):
         async with ClientSession(r, w) as s:
@@ -71,8 +70,8 @@ async def main():
 
             # 3. validate_model (valid + error)
             md.append("---\n\n## `validate_model`\n")
-            md.append("The merge gate. `source` may be `.arch`, canonical JSON, or "
-                      "Structurizr DSL — format detected.\n")
+            md.append("The merge gate. `source` may be canonical JSON or Structurizr "
+                      "DSL — format detected.\n")
             md.append("**Request**\n```json\n" +
                       block({"name": "validate_model", "arguments": {"source": "<canonical model JSON>"}}) +
                       "\n```\n")
@@ -83,7 +82,7 @@ async def main():
 
             # 4. convert_model drawio + structurizr
             md.append("---\n\n## `convert_model`\n")
-            md.append("Exports a design. `to` ∈ {`drawio`, `arch`, `structurizr`}. "
+            md.append("Exports a design. `to` ∈ {`drawio`, `structurizr`}. "
                       "drawio returns SEPARATE C4 views (one C1, one C2 per system, one "
                       "C3 per container), never tabs.\n")
             md.append("**Request** (drawio)\n```json\n" +
