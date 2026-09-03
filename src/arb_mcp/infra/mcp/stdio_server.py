@@ -107,8 +107,12 @@ def check_catalog(source: str) -> str:
     try:
         model = loading.load(source)
         report = _check_catalog(model, from_env())
-    except (ModelError, RuntimeError) as exc:
-        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    except ModelError as exc:
+        return json.dumps({"ok": False, "error": "invalid_model", "detail": str(exc)},
+                          ensure_ascii=False)
+    except RuntimeError as exc:
+        return json.dumps({"ok": False, "error": "catalog_unavailable", "detail": str(exc)},
+                          ensure_ascii=False)
     return json.dumps({"ok": True, **report.to_dict()}, ensure_ascii=False, indent=2)
 
 
