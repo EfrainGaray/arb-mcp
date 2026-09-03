@@ -43,7 +43,6 @@ def build_model(
     relations: list[dict[str, Any]] | None = None,
     *,
     name: str = "",
-    views: list[dict[str, Any]] | None = None,
     spec: dict[str, Any] | None = None,
 ) -> BuiltModel:
     """Assemble and validate a canonical model from drafted parts.
@@ -60,7 +59,7 @@ def build_model(
         "spec": spec,
         "nodes": nodes,
         "relations": relations,
-        "views": views or [],
+        "views": [],
     }
     loading.validate_schema(model)
     return BuiltModel(model=model, report=validate_model(model))

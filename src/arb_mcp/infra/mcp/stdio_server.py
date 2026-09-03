@@ -15,6 +15,7 @@ from mcp.server.mcpserver import MCPServer
 
 from ...application.build_model import C4_SPEC, build_model
 from ...application.convert_model import FORMATS, convert_source
+from ...application.validate_model import validate_source
 from ...domain.loading import SCHEMA, ModelError
 
 mcp = MCPServer("arb-mcp")
@@ -64,7 +65,6 @@ def validate_model(source: str, include_implied: bool = False) -> str:
     (false when any ERROR is present), ``blocking_count`` and all ``findings``.
     Only deterministic rules run here; nothing probabilistic changes the verdict.
     """
-    from ...application.validate_model import validate_source
     try:
         report = validate_source(source, include_implied=include_implied)
     except ModelError as exc:
@@ -75,8 +75,7 @@ def validate_model(source: str, include_implied: bool = False) -> str:
 
 @mcp.tool()
 def convert_model(source: str, to: str = "drawio") -> str:
-    """Export a design to another surface. ``to`` is one of: drawio, arch,
-    structurizr.
+    """Export a design to another surface. ``to`` is one of: drawio, structurizr.
 
     ``source`` is a design in any accepted surface; the format is detected.
     drawio comes back as SEPARATE C4 views (one C1, one C2 per system, one C3

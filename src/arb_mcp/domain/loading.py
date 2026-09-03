@@ -68,3 +68,10 @@ def validate_schema(model: dict[str, Any]) -> None:
     except jsonschema.ValidationError as exc:
         loc = "/".join(str(p) for p in exc.absolute_path) or "<root>"
         raise ModelError(f"schema: {loc}: {exc.message}") from exc
+
+
+def to_arch(model: dict[str, Any]) -> str:
+    """Emit the canonical text (``.arch``) surface. Facade over the engine so no
+    caller reaches into ``_engine`` directly."""
+    text: str = convert.json_to_text(model)
+    return text

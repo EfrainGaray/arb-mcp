@@ -3,7 +3,7 @@
 Every surface is an exporter over the same model the linter validates, so a
 diagram and its verdict cannot drift. drawio is emitted as SEPARATE C4 views
 (C1, one C2 per system, one C3 per container) — never one file with tabs —
-because C4 is a set of diagrams, not a canvas. ``.arch`` is the DSL surface.
+because C4 is a set of diagrams, not a canvas.
 """
 from __future__ import annotations
 
@@ -11,26 +11,27 @@ import json
 from typing import Any
 
 from ..domain import drawio, loading, structurizr
-from ..domain._engine import convert as _arch
 
-FORMATS = ("drawio", "arch", "structurizr")
+FORMATS = ("drawio", "structurizr")
 
 
 def drawio_views(model: dict[str, Any]) -> list[dict[str, Any]]:
     """The C4 views as independent diagrams: level, scope, name, standalone xml."""
-    return drawio.to_c4_views(model)
+    return drawio.to_views(model)
 
 
 def convert_model(model: dict[str, Any], fmt: str) -> str:
     """Export ``model`` as ``fmt``. For drawio, returns a JSON object with the
-    list of separate C4 views; for arch, the DSL text."""
+    list of separate C4 views."""
     if fmt == "drawio":
         return json.dumps({"views": drawio_views(model)}, ensure_ascii=False, indent=2)
-    if fmt == "arch":
-        arch: str = _arch.json_to_text(model)
-        return arch
     if fmt == "structurizr":
         return structurizr.to_structurizr(model)
+    if fmt == "arch":
+        # Internal, unannounced surface: the canonical text language belongs to a
+        # separate project, not to this deliverable. Left functional on explicit
+        # request; deliberately absent from FORMATS and the error message.
+        return loading.to_arch(model)
     raise ValueError(f"unknown format {fmt!r}; known: {', '.join(FORMATS)}")
 
 
