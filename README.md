@@ -56,3 +56,7 @@ container), never tabs.
 
 Register it as a Kiro power in `~/.kiro/settings/mcp.json`. No LLM environment is
 needed — the host provides the intelligence.
+
+## API reference
+
+Every tool call and response, captured from the running server: [docs/API.md](docs/API.md). Regenerate with `python docs/gen_api.py` (from an active venv).
