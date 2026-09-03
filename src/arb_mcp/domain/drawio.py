@@ -155,13 +155,13 @@ def _edges_between(model: dict[str, Any], resolve: Any) -> list[str]:
         if a is None or b is None or a == b or (a, b) in seen:
             continue
         seen.add((a, b))
-        out.append(_edge_cell(f"e{len(out)}", _rel_label(rel), a, b))
+        out.append(_edge_cell(f":e{len(out)}", _rel_label(rel), a, b))
     return out
 
 
 # ─────────────────────────── the three levels ───────────────────────────
 def _view_c1(model: dict[str, Any]) -> dict[str, Any]:
-    by_id, parent = _index(model)
+    _, parent = _index(model)
     tops = [n for n in model.get("nodes", []) if n.get("type") in ("person", "softwareSystem")]
     top_ids = {n["id"] for n in tops}
     cells: list[str] = []
@@ -198,6 +198,8 @@ def _view_c2(model: dict[str, Any], system: dict[str, Any]) -> dict[str, Any]:
     externals: dict[str, dict[str, Any]] = {}
 
     def resolve(nid: str) -> str | None:
+        if nid not in by_id:
+            return None  # dangling endpoint: the linter blocks it; never crash here
         inside = _lift_to(nid, container_ids, parent)
         if inside is not None:
             return inside
@@ -210,7 +212,7 @@ def _view_c2(model: dict[str, Any], system: dict[str, Any]) -> dict[str, Any]:
     edges = _edges_between(model, resolve)
     ey = 40
     for ext in externals.values():
-        style = _STYLE.get(ext["type"], _EXTERNAL) if ext["type"] == "person" else _EXTERNAL
+        style = _STYLE["person"] if ext["type"] == "person" else _EXTERNAL
         cells.append(_vertex(ext["id"], _label(ext), style, 600, ey, 200, 90))
         ey += 130
     cells += edges
@@ -235,6 +237,8 @@ def _view_c3(model: dict[str, Any], container: dict[str, Any],
     externals: dict[str, dict[str, Any]] = {}
 
     def resolve(nid: str) -> str | None:
+        if nid not in by_id:
+            return None  # dangling endpoint: the linter blocks it; never crash here
         inside = _lift_to(nid, comp_ids, parent)
         if inside is not None:
             return inside
