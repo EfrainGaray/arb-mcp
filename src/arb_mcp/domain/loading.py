@@ -18,7 +18,7 @@ import jsonschema
 
 from ._engine import convert, from_structurizr
 
-_SCHEMA: dict[str, Any] = json.loads(
+SCHEMA: dict[str, Any] = json.loads(
     (files("arb_mcp.domain._engine.schema") / "architecture.schema.json").read_text("utf-8")
 )
 
@@ -64,7 +64,7 @@ def load(text: str) -> dict[str, Any]:
 def validate_schema(model: dict[str, Any]) -> None:
     """Raise :class:`ModelError` unless ``model`` satisfies the normative schema."""
     try:
-        jsonschema.validate(model, _SCHEMA)
+        jsonschema.validate(model, SCHEMA)
     except jsonschema.ValidationError as exc:
         loc = "/".join(str(p) for p in exc.absolute_path) or "<root>"
         raise ModelError(f"schema: {loc}: {exc.message}") from exc

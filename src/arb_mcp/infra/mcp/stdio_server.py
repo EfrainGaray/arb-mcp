@@ -9,20 +9,15 @@ The HTTP/SSE adapter (auth + audit, for CI) will share the exact same use cases.
 from __future__ import annotations
 
 import json
-from importlib.resources import files
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
-from ...application.build_model import _C4_SPEC, build_model
+from ...application.build_model import C4_SPEC, build_model
 from ...application.convert_model import FORMATS, convert_source
-from ...domain.loading import ModelError
+from ...domain.loading import SCHEMA, ModelError
 
 mcp = MCPServer("arb-mcp")
-
-_SCHEMA: dict[str, Any] = json.loads(
-    (files("arb_mcp.domain._engine.schema") / "architecture.schema.json").read_text("utf-8")
-)
 
 
 @mcp.tool()
@@ -33,7 +28,7 @@ def describe_contract() -> str:
     An agent calls this first so it drafts elements of the right shape, instead
     of guessing. This is the deterministic replacement for a generation prompt.
     """
-    return json.dumps({"spec": _C4_SPEC, "schema": _SCHEMA}, ensure_ascii=False, indent=2)
+    return json.dumps({"spec": C4_SPEC, "schema": SCHEMA}, ensure_ascii=False, indent=2)
 
 
 @mcp.tool()
