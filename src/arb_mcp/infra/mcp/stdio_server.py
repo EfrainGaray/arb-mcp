@@ -1,89 +1,100 @@
-"""stdio MCP adapter: exposes the use cases as MCP tools over stdio.
+"""stdio MCP adapter: the tools a host (Kiro) drives.
 
-This is the local surface — the architect's Kiro Power talks to this process
-directly, no network. The HTTP/SSE adapter (auth + audit log, for CI) shares
-the exact same use cases and adds nothing to the validation logic.
+The server has NO LLM and calls none. It is a box of deterministic tools:
+describe the contract, assemble a drafted model, validate it, convert it. The
+agent supplies the thinking; these tools supply the ground truth.
 
-First tool wired: ``validate_model``. The others (convert, query, generate)
-follow the same pattern — thin adapters over ``application`` — and are added as
-their use cases land.
+The HTTP/SSE adapter (auth + audit, for CI) will share the exact same use cases.
 """
 from __future__ import annotations
 
 import json
+from importlib.resources import files
+from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
+from ...application.build_model import _C4_SPEC, build_model
 from ...application.convert_model import FORMATS, convert_source
-from ...application.generate_model import generate_design
-from ...application.validate_model import validate_source
 from ...domain.loading import ModelError
-from ...infra.llm import from_env
 
 mcp = MCPServer("arb-mcp")
 
+_SCHEMA: dict[str, Any] = json.loads(
+    (files("arb_mcp.domain._engine.schema") / "architecture.schema.json").read_text("utf-8")
+)
+
 
 @mcp.tool()
-def validate_model(source: str, include_implied: bool = False) -> str:
-    """Validate an architecture design and report whether it may merge.
+def describe_contract() -> str:
+    """The contract to build a design against: the C4 spec (allowed node and
+    relation types, and what each requires) and the normative JSON schema.
 
-    ``source`` is a design in any accepted surface: the ``.arch`` language,
-    the canonical schema JSON, or Structurizr DSL. The format is detected.
+    An agent calls this first so it drafts elements of the right shape, instead
+    of guessing. This is the deterministic replacement for a generation prompt.
+    """
+    return json.dumps({"spec": _C4_SPEC, "schema": _SCHEMA}, ensure_ascii=False, indent=2)
 
-    Returns a JSON object with ``may_merge`` (false when any ERROR is present),
-    ``blocking_count`` and the full ``findings`` list. Only deterministic rules
-    run here; nothing probabilistic can change the merge verdict.
+
+@mcp.tool()
+def build_model_tool(
+    nodes: list[dict[str, Any]],
+    relations: list[dict[str, Any]] | None = None,
+    name: str = "",
+) -> str:
+    """Assemble a canonical model from drafted C4 elements and validate it.
+
+    ``nodes``/``relations`` are what the agent drafted from the epic. The fixed
+    C4 spec is injected here (the agent cannot invent types) and the result is
+    held to the schema. Returns ``{ok, model, validation}``; on a malformed
+    draft, ``{ok:false, error, detail}`` with the exact schema failure to fix.
     """
     try:
-        report = validate_source(source, include_implied=include_implied)
+        built = build_model(nodes, relations or [], name=name)
     except ModelError as exc:
-        return json.dumps(
-            {"may_merge": False, "error": "invalid_model", "detail": str(exc)},
-            ensure_ascii=False,
-        )
-    return json.dumps(report.to_dict(), ensure_ascii=False, indent=2)
-
-
-@mcp.tool()
-def generate_model(description: str, stories: list[str] | None = None, name: str = "") -> str:
-    """Draft a C4 design from natural language: a prompt, an epic, or the text
-    of a file (Jira/Markdown content is passed in as ``description``).
-
-    Returns JSON with the generated ``.arch`` source, the canonical ``model``,
-    and a ``validation`` report of that draft. This is generation, not a gate:
-    ``validation.may_merge`` reflects the deterministic rules the draft still
-    breaks, but this tool never blocks anything. Needs ARB_LLM_BASE_URL and
-    ARB_LLM_MODEL in the environment.
-    """
-    try:
-        llm = from_env()
-        design = generate_design(llm, description, stories=stories or [], name=name)
-    except (ModelError, RuntimeError) as exc:
-        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+        return json.dumps({"ok": False, "error": "invalid_model", "detail": str(exc)},
+                          ensure_ascii=False)
     return json.dumps(
-        {"ok": True, "model": design.model, "validation": design.report.to_dict()},
+        {"ok": True, "model": built.model, "validation": built.report.to_dict()},
         ensure_ascii=False, indent=2,
     )
 
 
 @mcp.tool()
-def convert_model(source: str, to: str = "drawio") -> str:
-    """Export a design to another surface. ``to`` is one of: drawio, arch.
+def validate_model(source: str, include_implied: bool = False) -> str:
+    """Validate a design and report whether it may merge.
 
-    ``source`` is a design in any accepted surface (.arch / schema JSON /
-    Structurizr DSL); the format is detected. drawio output is native,
-    editable C4 XML using the real mxgraph.c4 stencil styles. This is the
-    Structurizr-DSL-to-drawio path: pass the DSL, get the diagram.
+    ``source`` is a design in any accepted surface — ``.arch``, canonical schema
+    JSON, or Structurizr DSL; the format is detected. Returns ``may_merge``
+    (false when any ERROR is present), ``blocking_count`` and all ``findings``.
+    Only deterministic rules run here; nothing probabilistic changes the verdict.
+    """
+    from ...application.validate_model import validate_source
+    try:
+        report = validate_source(source, include_implied=include_implied)
+    except ModelError as exc:
+        return json.dumps({"may_merge": False, "error": "invalid_model", "detail": str(exc)},
+                          ensure_ascii=False)
+    return json.dumps(report.to_dict(), ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
+def convert_model(source: str, to: str = "drawio") -> str:
+    """Export a design to another surface. ``to`` is one of: drawio, arch,
+    structurizr.
+
+    ``source`` is a design in any accepted surface; the format is detected.
+    drawio comes back as SEPARATE C4 views (one C1, one C2 per system, one C3
+    per container), never tabbed. This is the Structurizr-DSL-to-drawio path.
     """
     try:
-        out = convert_source(source, to)
+        return convert_source(source, to)
     except ModelError as exc:
         return json.dumps({"ok": False, "error": "invalid_model", "detail": str(exc)},
                           ensure_ascii=False)
     except ValueError as exc:
         return json.dumps({"ok": False, "error": str(exc), "formats": list(FORMATS)},
                           ensure_ascii=False)
-    return out
 
 
 def main() -> None:
