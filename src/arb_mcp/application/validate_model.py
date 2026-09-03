@@ -33,6 +33,13 @@ class ValidationReport:
         }
 
 
+def validate_model(model: dict[str, Any], *, include_implied: bool = False) -> ValidationReport:
+    """Lint an already-loaded canonical model. The verdict is the model's;
+    no re-parsing through any text surface."""
+    findings: list[Finding] = lint(model, include_implied=include_implied)
+    return ValidationReport(findings)
+
+
 def validate_source(text: str, *, include_implied: bool = False) -> ValidationReport:
     """Load ``text`` (any accepted surface) and lint it.
 
@@ -41,5 +48,4 @@ def validate_source(text: str, *, include_implied: bool = False) -> ValidationRe
     lint finding on an otherwise valid model.
     """
     model = loading.load(text)
-    findings: list[Finding] = lint(model, include_implied=include_implied)
-    return ValidationReport(findings)
+    return validate_model(model, include_implied=include_implied)

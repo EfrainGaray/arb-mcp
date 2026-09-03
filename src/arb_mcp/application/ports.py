@@ -12,7 +12,14 @@ from typing import Any, Protocol
 
 
 class LlmPort(Protocol):
-    def draft_model(self, epic: str, stories: list[str]) -> dict[str, Any]: ...
+    """Drafts the variable part of a design from natural language.
+
+    Returns only ``nodes``/``relations``/``views`` — never the ``spec``. The
+    spec (the type system) is fixed and supplied by the use case, so the model
+    cannot invent its own types and the output is always checkable against a
+    known contract."""
+
+    def draft_design(self, description: str, stories: list[str]) -> dict[str, Any]: ...
 
 
 class JiraPort(Protocol):
