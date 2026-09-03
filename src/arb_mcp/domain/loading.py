@@ -10,6 +10,7 @@ exist as far as the rest of the system is concerned.
 from __future__ import annotations
 
 import json
+import re
 from importlib.resources import files
 from typing import Any
 
@@ -30,8 +31,14 @@ def _looks_like_json(text: str) -> bool:
     return text.lstrip().startswith("{")
 
 
+_STRUCTURIZR_HEAD = re.compile(r"\s*(//[^\n]*\n\s*)*workspace\b")
+
+
 def _looks_like_structurizr(text: str) -> bool:
-    return "workspace" in text and "{" in text and "model" in text
+    """Structurizr DSL opens with ``workspace``; ``.arch`` opens with ``model``.
+    Anchored at the start so a stray "workspace" inside a free-text description
+    of an ``.arch`` file no longer hijacks the format detection."""
+    return _STRUCTURIZR_HEAD.match(text) is not None
 
 
 def load(text: str) -> dict[str, Any]:
@@ -42,7 +49,7 @@ def load(text: str) -> dict[str, Any]:
         if _looks_like_json(text):
             model = json.loads(text)
         elif _looks_like_structurizr(text):
-            model = from_structurizr.convert(text)
+            model, _lost = from_structurizr.convert(text)
         else:
             model = convert.text_to_json(text)
     except ModelError:
