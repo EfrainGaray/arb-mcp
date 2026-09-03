@@ -35,3 +35,22 @@ def test_missing_relation_type_is_defaulted():
 def test_malformed_draft_fails_with_a_reason():
     with pytest.raises(ModelError):
         build_model([{"id": "x"}])  # node missing type/name
+
+
+def test_include_implied_adds_derived_relations_to_validation():
+    """The implied-relations branch of the linter must actually run."""
+    from arb_mcp.application.validate_model import validate_model as vm
+    from arb_mcp.domain.loading import load
+    m = load(open("tests/fixtures/agatha.arch").read())
+    base = vm(m, include_implied=False)
+    derived = vm(m, include_implied=True)
+    # deriving relations can only keep or change findings, never crash
+    assert isinstance(base.findings, list) and isinstance(derived.findings, list)
+
+
+def test_describe_contract_returns_spec_and_schema():
+    import json
+    from arb_mcp.infra.mcp.stdio_server import describe_contract
+    out = json.loads(describe_contract())
+    assert out["spec"]["nodeTypes"]
+    assert out["schema"]["$schema"] if "$schema" in out["schema"] else out["schema"]

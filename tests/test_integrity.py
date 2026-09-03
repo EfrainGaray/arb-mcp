@@ -46,9 +46,11 @@ def test_edge_cell_id_cannot_collide_with_a_node_id():
         [{"from": "e0", "to": "sys", "type": "uses"}],
     )
     from xml.etree import ElementTree as ET
-    c1 = next(v for v in drawio_views(m) if v["level"] == "C1")
-    ids = [c.get("id") for c in ET.fromstring(c1["xml"]).iter("mxCell")]
-    assert ids.count("e0") == 1  # the node, not also the edge
+    root = ET.fromstring(next(v for v in drawio_views(m) if v["level"] == "C1")["xml"])
+    obj_ids = [o.get("id") for o in root.iter("object")]
+    edge_ids = [c.get("id") for c in root.iter("mxCell") if c.get("edge") == "1"]
+    assert obj_ids.count("e0") == 1        # the node lives on the <object>
+    assert "e0" not in edge_ids            # the edge id is namespaced (:e0), no clash
 
 
 def test_build_model_does_not_mutate_callers_relations():

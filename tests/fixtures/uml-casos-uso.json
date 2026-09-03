@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "name": "Cajero automático",
+  "scope": "undefined",
+  "spec": {
+    "nodeTypes": {
+      "actor":   { "description": "Someone who interacts with the system", "contains": [] },
+      "system":  { "description": "The use-case boundary", "contains": ["useCase"] },
+      "useCase": { "description": "A goal the system fulfils", "contains": [] }
+    },
+    "relationTypes": {
+      "association": { "description": "An actor takes part in a use case", "from": ["actor"] },
+      "include":     { "description": "A use case always includes another", "from": ["useCase"], "to": ["useCase"] },
+      "extend":      { "description": "A use case optionally extends another", "from": ["useCase"], "to": ["useCase"] }
+    }
+  },
+  "nodes": [
+    { "id": "cliente", "type": "actor", "name": "Cliente" },
+    { "id": "cajero",  "type": "actor", "name": "Cajero" },
+    { "id": "atm", "type": "system", "name": "Cajero automático", "nodes": [
+      { "id": "retirar",   "type": "useCase", "name": "Retirar efectivo" },
+      { "id": "consultar", "type": "useCase", "name": "Consultar saldo" },
+      { "id": "autenticar","type": "useCase", "name": "Autenticar" }
+    ]}
+  ],
+  "relations": [
+    { "from": "cliente", "to": "retirar",   "type": "association" },
+    { "from": "cliente", "to": "consultar", "type": "association" },
+    { "from": "cajero",  "to": "retirar",   "type": "association" },
+    { "from": "retirar",   "to": "autenticar", "type": "include", "description": "include" },
+    { "from": "consultar", "to": "autenticar", "type": "include", "description": "include" }
+  ]
+}
