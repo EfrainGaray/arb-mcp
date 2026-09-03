@@ -1,41 +1,62 @@
-"""drawio export: the XML parses, and carries the real C4 stencil styles."""
+"""drawio export: separate C4 views, each standalone XML with real stencil styles."""
+import json
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from arb_mcp.application.convert_model import convert_source
+import pytest
+
+from arb_mcp.application.convert_model import convert_source, drawio_views
 from arb_mcp.domain.loading import load
 
 FIX = Path(__file__).parent / "fixtures"
 DSL = (FIX / "simple.dsl").read_text("utf-8")
+AGATHA = (FIX / "agatha.arch").read_text("utf-8")
 
 
-def test_drawio_is_well_formed_xml():
-    xml = convert_source(DSL, "drawio")
-    root = ET.fromstring(xml)  # raises on malformed XML
-    assert root.tag == "mxfile"
+def test_each_view_is_its_own_standalone_mxfile():
+    views = json.loads(convert_source(DSL, "drawio"))["views"]
+    assert views, "at least a C1 view"
+    for v in views:
+        root = ET.fromstring(v["xml"])
+        assert root.tag == "mxfile"
+        # exactly one diagram per file — never tabs
+        assert len(root.findall("diagram")) == 1
 
 
-def test_drawio_uses_real_c4_styles():
-    xml = convert_source(DSL, "drawio")
-    # person shape and the per-level fills, verbatim from the drawio stencil
+def test_levels_are_separated_c1_c2_c3():
+    """simple.dsl: a system with one container -> C1 and C2, no C3."""
+    views = drawio_views(load(DSL))
+    levels = [v["level"] for v in views]
+    assert "C1" in levels
+    assert "C2" in levels  # System has a container
+    assert levels.count("C1") == 1  # one context view, always
+
+
+def test_c1_does_not_expand_containers():
+    """The context view shows systems as boxes, never their internals."""
+    views = drawio_views(load(DSL))
+    c1 = next(v for v in views if v["level"] == "C1")
+    root = ET.fromstring(c1["xml"])
+    ids = {c.get("id") for c in root.iter("mxCell") if c.get("vertex") == "1"}
+    assert "web" not in ids  # the container must not appear in C1
+    assert "sys" in ids and "user" in ids
+
+
+def test_c2_nests_containers_in_the_system_boundary():
+    views = drawio_views(load(DSL))
+    c2 = next(v for v in views if v["level"] == "C2")
+    root = ET.fromstring(c2["xml"])
+    web = next(c for c in root.iter("mxCell") if c.get("id") == "web")
+    assert web.get("parent") == "sys"  # container nested inside the system boundary
+
+
+def test_views_use_real_c4_styles():
+    xml = "".join(v["xml"] for v in drawio_views(load(DSL)))
     assert "shape=mxgraph.c4.person2" in xml
-    assert "fillColor=#1061B0" in xml  # softwareSystem
-    assert "fillColor=#23A2D9" in xml  # container
-    assert "endArrow=blockThin" in xml  # the C4 relationship edge
-
-
-def test_every_node_and_relation_becomes_a_cell():
-    model = load(DSL)
-    xml = convert_source(DSL, "drawio")
-    root = ET.fromstring(xml)
-    vertices = [c for c in root.iter("mxCell") if c.get("vertex") == "1"]
-    edges = [c for c in root.iter("mxCell") if c.get("edge") == "1"]
-    # simple.dsl: user, sys, web = 3 nodes; 1 relation
-    assert len(vertices) == 3
-    assert len(edges) == 1
+    assert "fillColor=#23A2D9" in xml  # container level
+    assert "endArrow=blockThin" in xml  # C4 relationship edge
 
 
 def test_unknown_format_is_a_value_error():
-    import pytest
     with pytest.raises(ValueError, match="unknown format"):
         convert_source(DSL, "png")

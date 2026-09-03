@@ -1,12 +1,13 @@
 """Use case: export a canonical model to a text surface.
 
-Every surface is an exporter over the same model the linter validates — so a
-diagram and its verdict cannot drift. drawio is the one the bank consumes;
-``.arch`` is the human-readable DSL. Mermaid and Structurizr are declared but
-not yet wired, and say so loudly rather than returning something half-made.
+Every surface is an exporter over the same model the linter validates, so a
+diagram and its verdict cannot drift. drawio is emitted as SEPARATE C4 views
+(C1, one C2 per system, one C3 per container) — never one file with tabs —
+because C4 is a set of diagrams, not a canvas. ``.arch`` is the DSL surface.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from ..domain import drawio, loading
@@ -15,9 +16,16 @@ from ..domain._engine import convert as _arch
 FORMATS = ("drawio", "arch")
 
 
+def drawio_views(model: dict[str, Any]) -> list[dict[str, Any]]:
+    """The C4 views as independent diagrams: level, scope, name, standalone xml."""
+    return drawio.to_c4_views(model)
+
+
 def convert_model(model: dict[str, Any], fmt: str) -> str:
+    """Export ``model`` as ``fmt``. For drawio, returns a JSON object with the
+    list of separate C4 views; for arch, the DSL text."""
     if fmt == "drawio":
-        return drawio.to_drawio(model)
+        return json.dumps({"views": drawio_views(model)}, ensure_ascii=False, indent=2)
     if fmt == "arch":
         arch: str = _arch.json_to_text(model)
         return arch
@@ -27,8 +35,7 @@ def convert_model(model: dict[str, Any], fmt: str) -> str:
 def convert_source(text: str, fmt: str) -> str:
     """Load ``text`` (any accepted surface) then export it as ``fmt``.
 
-    This is the Structurizr-DSL-to-drawio path the bank needs: load the DSL it
-    already has, hold it to the schema, emit native C4 drawio XML.
-    """
+    The Structurizr-DSL-to-drawio path the bank needs: load the DSL it already
+    has, hold it to the schema, emit native C4 drawio views."""
     model = loading.load(text)
     return convert_model(model, fmt)
