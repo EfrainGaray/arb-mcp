@@ -1,0 +1,96 @@
+model "Agatha" "Transporte de datos binarios a través de YouTube con corrección de errores BCH" {
+  spec {
+    node person "A user of the system" {
+      leaf
+    }
+    node softwareSystem "A software system" {
+      contains container
+    }
+    node container "Something deployable" {
+      contains component
+    }
+    node component "A part inside a container" {
+      leaf
+    }
+    node deploymentNode "Where something runs"
+    node infrastructureNode "Load balancer, firewall, DNS" {
+      leaf
+    }
+    node decision "Decision record" {
+      leaf
+      requires status
+    }
+    relation uses
+    relation affects "Ties a decision to what it decides" {
+      from decision
+    }
+  }
+  usuario = person "Usuario" "Sube un archivo y recibe una URL de descarga"
+  correo = softwareSystem "Correo" "Entrega el enlace de descarga" {
+    technology "Externo"
+  }
+  youtube = softwareSystem "YouTube" "Almacena los datos como video 4K y los transcodifica a VP9" {
+    technology "Externo"
+  }
+  agatha = softwareSystem "Agatha" "Codifica archivos como frames de video, los sube y los reconstruye bit-exacto" {
+    api = container "API del demo" "Recibe archivos, encola trabajos y sirve la descarga" {
+      technology "Python · FastAPI"
+    }
+    escaner = container "Escáner aislado" "Analiza el archivo sin red antes de tocarlo" {
+      technology "Docker · ClamAV"
+    }
+    cli = container "CLI" "Operación manual del pipeline" {
+      technology "Python · Typer"
+    }
+    almacen = container "Manifiestos" "Solo SHA256 y referencias remotas: mínima persistencia" {
+      technology "SQLite"
+      tags "Database"
+    }
+    core = container "Núcleo hexagonal" "Chunking, BCH, bitmap, códec y verificación" {
+      technology "Python"
+      servicio = component "Servicio de aplicación" "Caso de uso: recibir, transformar, entregar" {
+        technology "Python"
+      }
+      chunker = component "Chunker" "Parte el TAR canónico en bloques de 10 MB" {
+        technology "Python"
+      }
+      bch = component "Códec BCH" "t=16, m=15 · 30 bytes de paridad por bloque de 2048" {
+        technology "bchlib"
+      }
+      bitmap = component "Bitmap 4K" "Empaqueta los bits en 3840x2160 · 1 pixel = 1 bit" {
+        technology "NumPy"
+      }
+      codec = component "Códec de video" "FFV1 sin pérdida y H.264 CRF 18 para la subida" {
+        technology "FFmpeg"
+      }
+      canal = component "Puerto de canal" "Abstrae dónde vive el video" {
+        technology "Interfaz"
+      }
+      verificador = component "Verificador" "Compara el SHA256 del TAR reconstruido" {
+        technology "hashlib"
+      }
+    }
+  }
+  servicio -uses-> chunker "Parte el archivo"
+  chunker -uses-> bch "Protege cada bloque"
+  bch -uses-> bitmap "Bits protegidos"
+  bitmap -uses-> codec "Frames"
+  codec -uses-> canal "Bundle listo"
+  servicio -uses-> verificador "Valida la reconstrucción"
+  usuario -uses-> api "Sube un archivo y su correo" { technology "HTTPS" }
+  api -uses-> escaner "Delega el análisis" { technology "docker run --network none" }
+  api -uses-> servicio "Codifica y reconstruye"
+  cli -uses-> servicio "Invoca las mismas etapas"
+  servicio -uses-> almacen "Guarda el manifiesto y el SHA" { technology "SQL" }
+  canal -uses-> youtube "Sube el video (unlisted) y lo recupera" { technology "OAuth · yt-dlp" }
+  api -uses-> correo "Envía la URL de descarga" { technology "SMTP" }
+  view Contexto "Contexto" {
+    include inside agatha
+  }
+  view Contenedores "Contenedores" {
+    include inside agatha
+  }
+  view Componentes "Componentes" {
+    include inside core
+  }
+}
