@@ -13,8 +13,7 @@ validation path by construction.
 - `domain/` — the vendored, bit-for-bit engine (schema, grammar, inspections,
   implied relations) behind a typed facade (`findings`, `loading`, `linter`).
 - `application/` — use cases and ports.
-- `infra/` — transport adapters (stdio today; HTTP/SSE with auth next) and the
-  outward ports (Jira, LLM, drawio).
+- `infra/` — transport adapters (stdio today; HTTP/SSE with auth next).
 
 ## Develop
 
@@ -32,7 +31,7 @@ epic, drafts the C4 elements — and drives these deterministic tools. Four tool
 | Know what shape to draft | `describe_contract` | `describe_contract()` -> `{spec, schema}` |
 | Turn its draft into a validated model | `build_model_tool` | `build_model_tool(nodes, relations?, name?)` -> `{ok, model, validation}` |
 | Validate a design (the merge gate) | `validate_model` | `validate_model(source)` -> `{may_merge, blocking_count, findings}` |
-| Get the diagrams / DSLs | `convert_model` | `convert_model(source, to)` -> drawio views / `.arch` / Structurizr DSL |
+| Get the diagrams / DSL | `convert_model` | `convert_model(source, to)` -> drawio views / Structurizr DSL |
 
 Typical loop, all inside Kiro:
 
@@ -44,8 +43,8 @@ Typical loop, all inside Kiro:
 4. `convert_model(model, to="drawio")` for the separate C1/C2/C3 diagrams and
    `to="structurizr"` for the repo DSL.
 
-`source` is any accepted surface — `.arch`, canonical schema JSON, or Structurizr
-DSL; the format is detected. Only `validate_model` decides a merge. drawio always
+`source` is any accepted surface — canonical schema JSON or Structurizr DSL;
+the format is detected. Only `validate_model` decides a merge. drawio always
 comes back as **separate C4 views** (one C1, one C2 per system, one C3 per
 container), never tabs.
 
@@ -60,3 +59,7 @@ needed — the host provides the intelligence.
 ## API reference
 
 Every tool call and response, captured from the running server: [docs/API.md](docs/API.md). Regenerate with `python docs/gen_api.py` (from an active venv).
+
+## The same canonical model, another notation
+
+UML use cases from the same schema, exported to DSL and to drawio — a worked example with real engine output: [docs/EJEMPLO-UML.md](docs/EJEMPLO-UML.md).
