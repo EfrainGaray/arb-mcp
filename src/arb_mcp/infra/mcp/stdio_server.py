@@ -14,6 +14,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from ...application.build_model import C4_SPEC, build_model
+from ...application.check_catalog import check_catalog as _check_catalog
 from ...application.convert_model import FORMATS, convert_source
 from ...application.validate_model import validate_source
 from ...domain.loading import SCHEMA, ModelError
@@ -89,6 +90,26 @@ def convert_model(source: str, to: str = "drawio") -> str:
     except ValueError as exc:
         return json.dumps({"ok": False, "error": str(exc), "formats": list(FORMATS)},
                           ensure_ascii=False)
+
+
+@mcp.tool()
+def check_catalog(source: str) -> str:
+    """Reconcile a design against the architecture catalog (LeanIX, the source of
+    truth): which components already exist there (with their catalog id) and
+    which are new and must be registered to keep the catalog current.
+
+    ``source`` is a design in any accepted surface; the format is detected.
+    Informational only — it never blocks a merge. Needs LEANIX_BASE_URL and
+    LEANIX_API_TOKEN in the environment.
+    """
+    from ...domain import loading
+    from ...infra.leanix import from_env
+    try:
+        model = loading.load(source)
+        report = _check_catalog(model, from_env())
+    except (ModelError, RuntimeError) as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    return json.dumps({"ok": True, **report.to_dict()}, ensure_ascii=False, indent=2)
 
 
 def main() -> None:

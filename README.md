@@ -32,6 +32,7 @@ epic, drafts the C4 elements — and drives these deterministic tools. Four tool
 | Turn its draft into a validated model | `build_model_tool` | `build_model_tool(nodes, relations?, name?)` -> `{ok, model, validation}` |
 | Validate a design (the merge gate) | `validate_model` | `validate_model(source)` -> `{may_merge, blocking_count, findings}` |
 | Get the diagrams / DSL | `convert_model` | `convert_model(source, to)` -> drawio views / Structurizr DSL |
+| Reconcile against the catalog (source of truth) | `check_catalog` | `check_catalog(source)` -> known / unknown components (needs LeanIX env) |
 
 Typical loop, all inside Kiro:
 
