@@ -1,0 +1,47 @@
+{
+  "nodeTypes": {
+    "person": {
+      "description": "A user of the system",
+      "contains": []
+    },
+    "softwareSystem": {
+      "description": "A software system",
+      "contains": [
+        "container"
+      ]
+    },
+    "container": {
+      "description": "Something deployable",
+      "contains": [
+        "component"
+      ]
+    },
+    "component": {
+      "description": "A part inside a container",
+      "contains": []
+    },
+    "deploymentNode": {
+      "description": "Where something runs"
+    },
+    "infrastructureNode": {
+      "description": "Load balancer, firewall, DNS",
+      "contains": []
+    },
+    "decision": {
+      "description": "Decision record",
+      "contains": [],
+      "requires": [
+        "status"
+      ]
+    }
+  },
+  "relationTypes": {
+    "uses": {},
+    "affects": {
+      "description": "Ties a decision to what it decides",
+      "from": [
+        "decision"
+      ]
+    }
+  }
+}
