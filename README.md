@@ -13,7 +13,7 @@ validation path by construction.
 - `domain/` — the vendored, bit-for-bit engine (schema, grammar, inspections,
   implied relations) behind a typed facade (`findings`, `loading`, `linter`).
 - `application/` — use cases and ports.
-- `infra/` — transport adapters (stdio today; HTTP/SSE with auth next).
+- `infra/` — transport adapters: stdio for the architect, HTTP (FastAPI) for CI and demos, authenticated against the organisation's identity provider (OIDC/JWT) or a static token for local work.
 
 ## Develop
 

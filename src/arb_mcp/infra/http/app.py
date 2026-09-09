@@ -19,8 +19,6 @@ failure the tools already distinguish:
 """
 from __future__ import annotations
 
-import hashlib
-import hmac
 import json
 import logging
 import time
@@ -41,6 +39,7 @@ from ...domain import loading
 from ...domain.loading import SCHEMA, ModelError
 from ..leanix import from_env
 from ..mcp.stdio_server import mcp as mcp_server
+from .auth import Authenticator, AuthError, StaticTokenAuth
 
 _audit = logging.getLogger("arb_mcp.audit")
 _OPEN_PATHS = ("/health", "/docs", "/openapi.json", "/redoc")
@@ -67,40 +66,40 @@ class ConvertIn(SourceIn):
 
 # ── auth + audit ──────────────────────────────────────────────────────────────
 class _Guard(BaseHTTPMiddleware):
-    """Bearer token on everything but the open paths, and one audit line per call.
+    """Authenticate everything but the open paths, and leave one audit line per call.
 
     A middleware and not a FastAPI dependency on purpose: the MCP transport is a
     mounted sub-app and dependencies do not reach it. This does.
+
+    The guard does not know HOW a caller is verified — a pre-shared token on a
+    laptop, a JWT from PingFederate in the bank — it asks the ``Authenticator`` it
+    was given and names the caller by what that returns. Swapping the identity
+    provider is configuration, not a change here.
     """
 
-    def __init__(self, app: Any, token: str) -> None:
+    def __init__(self, app: Any, auth: Authenticator) -> None:
         super().__init__(app)
-        self._token = token.encode()
+        self._auth = auth
 
     @staticmethod
-    def _caller_of(given: bytes) -> str:
-        """Who the audit line names: a prefix of the hash of the PRESENTED token.
-
-        Of the presented one, not the configured one — the first deployment logged
-        every request, wrong tokens included, under the legitimate caller's id.
-        Enough to tell two tokens apart; the token itself is never written.
-        """
-        return hashlib.sha256(given).hexdigest()[:12] if given else "anonymous"
+    def _rejected(exc: AuthError) -> Response:
+        # 401 = not authenticated, 403 = authenticated but not allowed. The detail
+        # names the reason in words and never echoes the token.
+        kind = "unauthorized" if exc.status == 401 else "forbidden"
+        return JSONResponse({"error": kind, "detail": exc.detail}, exc.status)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         t0 = time.perf_counter()
-        header = request.headers.get("authorization", "")
-        given = header[7:].encode() if header.startswith("Bearer ") else b""
-        caller = self._caller_of(given)
-        gated = not request.url.path.startswith(_OPEN_PATHS)
-        if gated and not hmac.compare_digest(given, self._token):
-            response: Response = JSONResponse(
-                {"error": "unauthorized", "detail": "bearer token required"}, 401
-            )
-            self._log(request, response, t0, caller)
-            return response
+        caller = "anonymous"
+        if not request.url.path.startswith(_OPEN_PATHS):
+            try:
+                caller = self._auth.authenticate(request.headers.get("authorization", "")).subject
+            except AuthError as exc:
+                response = self._rejected(exc)
+                self._log(request, response, t0, caller)
+                return response
         response = await call_next(request)
         self._log(request, response, t0, caller)
         return response
@@ -116,10 +115,16 @@ class _Guard(BaseHTTPMiddleware):
 
 
 # ── app ───────────────────────────────────────────────────────────────────────
-def create_app(token: str) -> FastAPI:
-    """Build the app. ``token`` is required: this surface is never anonymous."""
-    if not token:
-        raise RuntimeError("ARB_HTTP_TOKEN is required: the HTTP adapter is never anonymous")
+def create_app(token: str | None = None, *, auth: Authenticator | None = None) -> FastAPI:
+    """Build the app around an ``Authenticator``. This surface is never anonymous.
+
+    ``auth`` is the real parameter — an OIDC verifier for the bank's IdP, or a
+    static token for a laptop. ``token`` is the shorthand for the latter.
+    """
+    if auth is None:
+        if not token:
+            raise RuntimeError("no authenticator: pass auth=, or token= for local development")
+        auth = StaticTokenAuth(token)
 
     # streamable_http_app() must be called before session_manager exists
     mcp_asgi = mcp_server.streamable_http_app()
@@ -139,7 +144,7 @@ def create_app(token: str) -> FastAPI:
         ),
         lifespan=lifespan,
     )
-    app.add_middleware(_Guard, token=token)
+    app.add_middleware(_Guard, auth=auth)
 
     @app.get("/health", tags=["ops"])
     def health() -> dict[str, str]:

@@ -117,10 +117,26 @@ layer makes is the HTTP status, and it maps the two kinds of failure above:
 **structural → 422**, unknown format → 400, catalog unreachable → 503, and a
 finding is not a failure → **200 with `may_merge`** in the body.
 
-**Auth.** Bearer token from `ARB_HTTP_TOKEN`, compared in constant time, required on
-everything except `/health`, `/docs`, `/openapi.json`. The app refuses to start
-without one: this surface is never anonymous. It is a middleware and not a
-dependency on purpose, so the mounted `/mcp` is covered too.
+**Auth.** Required on everything except `/health`, `/docs`, `/openapi.json`; a
+middleware and not a dependency on purpose, so the mounted `/mcp` is covered too.
+The guard delegates to an `Authenticator` (`infra/http/auth.py`) and there are two,
+chosen by configuration — never both, never neither:
+
+- **OIDC (production).** `ARB_OIDC_ISSUER` + `ARB_OIDC_AUDIENCE`, optional
+  `ARB_OIDC_SCOPE` and `ARB_OIDC_JWKS_URL`. The token must be a JWT the identity
+  provider signed — PingFederate, PingOne, Keycloak, Entra: any OIDC issuer — with
+  an asymmetric algorithm (RS/PS/ES; HMAC is refused outright, so the IdP's key never
+  lives here). Verified: signature against the issuer's JWKS found by OIDC
+  discovery, `iss`, `aud`, `exp` (30 s leeway), and the scope if one is required.
+  A missing scope is **403**, everything else **401**; the detail names the reason
+  and never echoes the token. The audit `caller` is the client id (`azp` /
+  `client_id`) for a machine caller and `sub` for a person. Proven end-to-end
+  against a live Keycloak with a `client_credentials` token (PS256, `aud` via
+  audience mapper, scope via a default client scope).
+- **Static (development).** `ARB_HTTP_TOKEN`, one pre-shared token compared in
+  constant time; `caller` is a hash prefix of it.
+
+This adapter only *verifies*; it issues nothing. Swapping the IdP is configuration.
 
 **Audit.** One JSON line per request on the `arb_mcp.audit` logger — method, path,
 status, milliseconds, and `caller` (a 12-hex prefix of the token's SHA-256, enough
