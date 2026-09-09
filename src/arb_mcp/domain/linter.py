@@ -10,6 +10,7 @@ from __future__ import annotations
 from . import implied, inspections
 from .findings import Finding, Severity
 from .model import Model
+from .views import members, named_nodes
 
 
 def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
@@ -79,6 +80,29 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                         f'A relation names {end} "{ref}", which is not an element in the model.',
                     )
                 )
+
+    # A view is a query; a query that names an element that is not there draws
+    # nothing and says nothing, and a view that resolves to nothing is a title
+    # with no picture. Both are deterministic facts about the model.
+    for view in model.views:
+        for q in (*view.include, *view.exclude):
+            findings.extend(
+                Finding(
+                    Severity.ERROR,
+                    "view.query.node",
+                    f'The view "{view.id}" queries "{ref}", which is not an element in the model.',
+                )
+                for ref in named_nodes(q)
+                if ref not in model
+            )
+        if model.nodes and not members(model, view):
+            findings.append(
+                Finding(
+                    Severity.WARNING,
+                    "view.empty",
+                    f'The view "{view.id}" selects no element.',
+                )
+            )
 
     subject = implied.derive(model)[0] if include_implied else model
     findings += inspections.inspect(subject)

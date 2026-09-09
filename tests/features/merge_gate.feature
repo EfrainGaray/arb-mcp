@@ -51,3 +51,15 @@ Feature: The merge gate
       | system    | absent   |
       | landscape | absent   |
       | undefined | ERROR    |
+
+  Scenario: A view that queries an element the model does not have is blocked
+    Given a person "User" described as "someone"
+    And a view "ctx" inside "Ghost"
+    When the design is validated
+    Then the findings include ERROR "view.query.node"
+
+  Scenario: A view that selects nothing is a warning
+    Given a person "User" described as "someone"
+    And a view "empty" of type "container"
+    When the design is validated
+    Then the findings include WARNING "view.empty"

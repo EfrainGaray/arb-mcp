@@ -264,6 +264,71 @@ class Relation:
         return "implied" in self.tags
 
 
+# ── view queries ──────────────────────────────────────────────────────────────
+# A view states WHAT to include, never WHICH elements: it stays correct as the
+# model grows. Five query shapes, closed by the schema.
+@dataclass(frozen=True, slots=True)
+class All:
+    def to_raw(self) -> Any:
+        return "*"
+
+
+@dataclass(frozen=True, slots=True)
+class ByType:
+    type: str
+
+    def to_raw(self) -> Any:
+        return {"type": self.type}
+
+
+@dataclass(frozen=True, slots=True)
+class ByTag:
+    tag: str
+
+    def to_raw(self) -> Any:
+        return {"tag": self.tag}
+
+
+@dataclass(frozen=True, slots=True)
+class Inside:
+    node: str
+    depth: int = 1
+
+    def to_raw(self) -> Any:
+        out: Json = {"inside": self.node}
+        if self.depth != 1:
+            out["depth"] = self.depth
+        return out
+
+
+@dataclass(frozen=True, slots=True)
+class Neighbors:
+    node: str
+    hops: int = 1
+
+    def to_raw(self) -> Any:
+        out: Json = {"neighbors": self.node}
+        if self.hops != 1:
+            out["hops"] = self.hops
+        return out
+
+
+Query = All | ByType | ByTag | Inside | Neighbors
+
+
+def query_from_raw(q: Any) -> Query:
+    """The schema's ``query`` oneOf, typed. Trusts schema-valid input."""
+    if q == "*":
+        return All()
+    if "type" in q:
+        return ByType(str(q["type"]))
+    if "tag" in q:
+        return ByTag(str(q["tag"]))
+    if "inside" in q:
+        return Inside(str(q["inside"]), int(q.get("depth", 1)))
+    return Neighbors(str(q["neighbors"]), int(q.get("hops", 1)))
+
+
 @dataclass(frozen=True, slots=True)
 class Placement:
     """Where a node sits, as a CELL and not as pixels: ``rank`` is the reading
@@ -328,8 +393,8 @@ class Layout:
 class View:
     id: str
     title: str
-    include: tuple[Any, ...]  # queries: "*" or {type|tag|inside|neighbors: ...}
-    exclude: tuple[Any, ...] = ()
+    include: tuple[Query, ...]
+    exclude: tuple[Query, ...] = ()
     description: str = ""
     layout: Layout | None = None
 
@@ -339,15 +404,20 @@ class View:
         return cls(
             id=str(d["id"]),
             title=str(d["title"]),
-            include=tuple(d.get("include") or ()),
-            exclude=tuple(d.get("exclude") or ()),
+            include=tuple(query_from_raw(q) for q in d.get("include") or ()),
+            exclude=tuple(query_from_raw(q) for q in d.get("exclude") or ()),
             description=str(d.get("description", "")),
             layout=Layout.from_dict(layout) if layout else None,
         )
 
     def to_dict(self) -> Json:
-        out: Json = {"id": self.id, "title": self.title, "include": list(self.include)}
-        _put(out, "exclude", self.exclude)
+        out: Json = {
+            "id": self.id,
+            "title": self.title,
+            "include": [q.to_raw() for q in self.include],
+        }
+        if self.exclude:
+            out["exclude"] = [q.to_raw() for q in self.exclude]
         _put(out, "description", self.description)
         if self.layout is not None:
             out["layout"] = self.layout.to_dict()

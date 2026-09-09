@@ -25,6 +25,7 @@ class Draft:
         self.spec: dict[str, Any] = {}
         self.nodes: list[dict[str, Any]] = []
         self.relations: list[dict[str, Any]] = []
+        self.views: list[dict[str, Any]] = []
         self.scope = "system"
         self.reports: list[ValidationReport] = []
 
@@ -51,6 +52,7 @@ class Draft:
                 "spec": self.spec,
                 "nodes": self.nodes,
                 "relations": self.relations,
+                "views": self.views,
             }
         )
         report = validate_model(model)
@@ -160,6 +162,16 @@ def _complete(draft: Draft) -> None:
     walk(draft.nodes)
     for r in draft.relations:
         r.setdefault("technology", "HTTPS")
+
+
+@given(parsers.parse('a view "{vid}" inside "{node}"'))
+def _view_inside(draft: Draft, vid: str, node: str) -> None:
+    draft.views.append({"id": vid, "title": vid, "include": [{"inside": _ident(node)}]})
+
+
+@given(parsers.parse('a view "{vid}" of type "{kind}"'))
+def _view_type(draft: Draft, vid: str, kind: str) -> None:
+    draft.views.append({"id": vid, "title": vid, "include": [{"type": kind}]})
 
 
 @given(parsers.parse('the model scope is "{scope}"'))

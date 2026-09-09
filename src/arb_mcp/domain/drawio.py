@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from xml.sax.saxutils import escape, quoteattr
 
 from .layout import Box, Resolved, resolve
-from .model import Layout, Model, Node, Relation
+from .model import All, Inside, Layout, Model, Node, Relation
 from .render import RenderProfile
 
 # Verbatim from drawio's mxgraph.c4 stencil (Sidebar-C4.js).
@@ -222,9 +222,9 @@ def _layout_for(model: Model, focus: str | None) -> Layout | None:
         if v.layout is None:
             continue
         for q in v.include:
-            if focus is None and q == "*":
+            if focus is None and isinstance(q, All):
                 return v.layout
-            if isinstance(q, dict) and q.get("inside") == focus:
+            if isinstance(q, Inside) and q.node == focus:
                 return v.layout
     return None
 
