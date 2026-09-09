@@ -7,43 +7,30 @@ network, no model weights.
 
 from __future__ import annotations
 
-from typing import Any
-
 from ._engine import implied, inspections
 from .findings import Finding, Severity
+from .model import Model
 
 
-def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Finding]:
+def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
     """Return the findings for ``model``.
 
     Derived (``implied``) relations are excluded by default: reporting a defect
     on a relation the author never wrote sends them to a line they cannot fix,
     which is the divergence from Structurizr already measured and chosen.
     """
-    subject = model
-    if include_implied:
-        subject, _ = implied.derive(model)
-
     findings: list[Finding] = []
     # A design with no elements is schema-valid but says nothing; it must never
     # pass a bank's gate. This rule lives here, in the audited facade, not in the
     # vendored engine.
-    if not model.get("nodes"):
+    if not model.nodes:
         findings.append(Finding(Severity.ERROR, "model.empty", "The model declares no elements."))
 
     # Integrity the JSON Schema cannot express: every id unique, every relation
     # endpoint an element that exists. Without these a dangling relation reads as
     # may_merge=true yet cannot be drawn, and a duplicate id silently overwrites a
     # diagram cell. Deterministic, blocking, in the audited facade.
-    ids: list[str] = []
-
-    def _collect(nodes: list[dict[str, Any]]) -> None:
-        for n in nodes:
-            ids.append(n["id"])
-            _collect(n.get("nodes", []))
-
-    _collect(model.get("nodes", []))
-    present = set(ids)
+    ids = [n.id for n in model.walk()]
 
     # The spec is the vocabulary: a type it does not declare is not a typo the
     # reader can forgive, it is an element nothing in the notation can draw or
@@ -51,36 +38,29 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
     # reached may_merge=true, and the engine even minted a rule named
     # "model.nope.description" from it. The claim that the injected spec keeps an
     # agent from inventing types was only true if something enforced it. This does.
-    spec = model.get("spec") or {}
-    node_types = set((spec.get("nodeTypes") or {}).keys())
-    rel_types = set((spec.get("relationTypes") or {}).keys())
-
-    def _check_types(nodes: list[dict[str, Any]]) -> None:
-        for n in nodes:
-            if node_types and n.get("type") not in node_types:
-                findings.append(
-                    Finding(
-                        Severity.ERROR,
-                        "model.type.undeclared",
-                        f'The element "{n["id"]}" has type "{n.get("type")}", which '
-                        f"the spec does not declare.",
-                    )
-                )
-            _check_types(n.get("nodes", []))
-
-    _check_types(model.get("nodes", []))
+    node_types = model.spec.node_types
+    rel_types = model.spec.relation_types
+    if node_types:
+        findings.extend(
+            Finding(
+                Severity.ERROR,
+                "model.type.undeclared",
+                f'The element "{n.id}" has type "{n.type}", which the spec does not declare.',
+            )
+            for n in model.walk()
+            if n.type not in node_types
+        )
     if rel_types:
-        for rel in model.get("relations", []):
-            t = rel.get("type")
-            if t is not None and t not in rel_types:
-                findings.append(
-                    Finding(
-                        Severity.ERROR,
-                        "model.relation.type.undeclared",
-                        f"The relation {rel.get('from')} -> {rel.get('to')} has type "
-                        f'"{t}", which the spec does not declare.',
-                    )
-                )
+        findings.extend(
+            Finding(
+                Severity.ERROR,
+                "model.relation.type.undeclared",
+                f'The relation {r.source} -> {r.target} has type "{r.type}", which the spec '
+                f"does not declare.",
+            )
+            for r in model.relations
+            if r.type and r.type not in rel_types
+        )
     findings.extend(
         Finding(
             Severity.ERROR,
@@ -89,12 +69,9 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
         )
         for dup in sorted({i for i in ids if ids.count(i) > 1})
     )
-    for rel in model.get("relations", []):
-        if "implied" in (rel.get("tags") or []):
-            continue
-        for end in ("from", "to"):
-            ref = rel.get(end)
-            if ref not in present:
+    for rel in model.written_relations():
+        for end, ref in (("from", rel.source), ("to", rel.target)):
+            if ref not in model:
                 findings.append(
                     Finding(
                         Severity.ERROR,
@@ -103,6 +80,11 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
                     )
                 )
 
+    # The vendored engine still reads the wire form; it is fed through to_dict()
+    # here and nowhere else.
+    subject = model.to_dict()
+    if include_implied:
+        subject, _ = implied.derive(subject)
     findings += [
         Finding(Severity(sev), rule, message) for sev, rule, message in inspections.inspect(subject)
     ]

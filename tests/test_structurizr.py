@@ -1,13 +1,13 @@
 """Structurizr export: the emitted DSL round-trips back through the loader."""
 
 from pathlib import Path
-from typing import Any
 
 from arb_mcp.application.convert_model import convert_source
 from arb_mcp.domain.loading import load
+from arb_mcp.domain.model import Model
 
 FIX = Path(__file__).parent / "fixtures"
-AGATHA = (FIX / "agatha.arch").read_text("utf-8")
+AGATHA = (FIX / "agatha.json").read_text("utf-8")
 DSL = (FIX / "simple.dsl").read_text("utf-8")
 
 
@@ -18,17 +18,12 @@ def test_structurizr_round_trips() -> None:
     assert dsl.startswith("workspace")
     reloaded = load(dsl)  # must parse as valid Structurizr and survive the schema
 
-    def c4_ids(m: dict[str, Any]) -> set[str]:
-        out: set[str] = set()
-
-        def walk(ns: list[dict[str, Any]]) -> None:
-            for n in ns:
-                if n.get("type") in {"person", "softwareSystem", "container", "component"}:
-                    out.add(n["id"])
-                walk(n.get("nodes", []))
-
-        walk(m["nodes"])
-        return out
+    def c4_ids(m: Model) -> set[str]:
+        return {
+            n.id
+            for n in m.walk()
+            if n.type in {"person", "softwareSystem", "container", "component"}
+        }
 
     # every C4 element in the source survives the trip
     assert c4_ids(original) <= c4_ids(reloaded)

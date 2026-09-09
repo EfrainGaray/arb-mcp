@@ -17,8 +17,11 @@ and its verdict cannot drift.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from dataclasses import dataclass
 from xml.sax.saxutils import escape, quoteattr
+
+from .model import Model, Node, Relation
 
 # Verbatim from drawio's mxgraph.c4 stencil (Sidebar-C4.js).
 _STYLE: dict[str, str] = {
@@ -74,51 +77,26 @@ _UML_BOUNDARY = (
 )
 
 
-def _is_c4(model: dict[str, Any]) -> bool:
-    types = (model.get("spec") or {}).get("nodeTypes") or {}
-    return "softwareSystem" in types and "container" in types
+@dataclass(frozen=True, slots=True)
+class Diagram:
+    """One standalone drawio file: a C4 level (or a flat notation) over a scope."""
 
+    level: str
+    scope: str
+    name: str
+    xml: str
 
-# ─────────────────────────── model indexing ───────────────────────────
-def _index(model: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], dict[str, str | None]]:
-    by_id: dict[str, dict[str, Any]] = {}
-    parent: dict[str, str | None] = {}
-
-    def walk(nodes: list[dict[str, Any]], up: str | None) -> None:
-        for n in nodes:
-            by_id[n["id"]] = n
-            parent[n["id"]] = up
-            walk(n.get("nodes", []), n["id"])
-
-    walk(model.get("nodes", []), None)
-    return by_id, parent
-
-
-def _top(nid: str, parent: dict[str, str | None]) -> str:
-    cur = nid
-    while (up := parent.get(cur)) is not None:
-        cur = up
-    return cur
-
-
-def _lift_to(nid: str, wanted: set[str], parent: dict[str, str | None]) -> str | None:
-    """The ancestor of ``nid`` (including itself) that is in ``wanted``, else None."""
-    cur: str | None = nid
-    while cur is not None:
-        if cur in wanted:
-            return cur
-        cur = parent.get(cur)
-    return None
+    def to_dict(self) -> dict[str, str]:
+        return {"level": self.level, "scope": self.scope, "name": self.name, "xml": self.xml}
 
 
 # ─────────────────────────── xml emit ───────────────────────────
-def _label(node: dict[str, Any]) -> str:
-    name = escape(str(node.get("name", node["id"])))
-    parts = [f"<b>{name}</b>"]
-    if node.get("technology"):
-        parts.append(f"[{escape(str(node['technology']))}]")
-    if node.get("description"):
-        parts.append(escape(str(node["description"])))
+def _label(node: Node) -> str:
+    parts = [f"<b>{escape(node.name)}</b>"]
+    if node.technology:
+        parts.append(f"[{escape(node.technology)}]")
+    if node.description:
+        parts.append(escape(node.description))
     return "<br>".join(parts)
 
 
@@ -140,26 +118,22 @@ _C4_LABEL_TECH = (
 )
 
 
-def _c4_vertex(
-    node: dict[str, Any], style: str, x: int, y: int, w: int, h: int, parent: str = "1"
-) -> str:
+def _c4_vertex(node: Node, style: str, x: int, y: int, w: int, h: int, parent: str = "1") -> str:
     """A native drawio C4 element: an <object> with c4* attributes and a
     placeholder label, exactly as drawio's own C4 shape library builds it — so
     it opens as a real C4 card (name, [Type: Technology], description), not a
     plain coloured box."""
-    ntype = node.get("type", "")
-    tech = node.get("technology")
-    label = _C4_LABEL_TECH if ntype in ("container", "component") else _C4_LABEL_PLAIN
+    label = _C4_LABEL_TECH if node.type in ("container", "component") else _C4_LABEL_PLAIN
     attrs = [
         f"label={quoteattr(label)}",
         'placeholders="1"',
-        f"c4Name={quoteattr(str(node.get('name', node['id'])))}",
-        f"c4Type={quoteattr(_C4_TYPE_LABEL.get(ntype, ntype))}",
+        f"c4Name={quoteattr(node.name)}",
+        f"c4Type={quoteattr(_C4_TYPE_LABEL.get(node.type, node.type))}",
     ]
-    if tech:
-        attrs.append(f"c4Technology={quoteattr(str(tech))}")
-    attrs.append(f"c4Description={quoteattr(str(node.get('description', '')))}")
-    attrs.append(f"id={quoteattr(node['id'])}")
+    if node.technology:
+        attrs.append(f"c4Technology={quoteattr(node.technology)}")
+    attrs.append(f"c4Description={quoteattr(node.description)}")
+    attrs.append(f"id={quoteattr(node.id)}")
     return (
         f"<object {' '.join(attrs)}>"
         f'<mxCell style={quoteattr(style)} vertex="1" parent={quoteattr(parent)}>'
@@ -197,81 +171,79 @@ def _mxfile(name: str, cells: list[str]) -> str:
     )
 
 
-def _rel_label(rel: dict[str, Any]) -> str:
-    label = escape(str(rel.get("description", "")))
-    if rel.get("technology"):
-        tech = f"[{escape(str(rel['technology']))}]"
+def _rel_label(rel: Relation) -> str:
+    label = escape(rel.description)
+    if rel.technology:
+        tech = f"[{escape(rel.technology)}]"
         label = f"{label}<br>{tech}" if label else tech
     return label
 
 
-def _resolved_pairs(model: dict[str, Any], resolve: Any) -> list[tuple[str, str]]:
-    """Every declared relation collapsed to its visible endpoints, deduped —
-    the same set ``_edges_between`` draws. Used to decide which externals to draw
-    so a box only appears when an edge to it actually survives."""
+Resolver = Callable[[str], str | None]
+
+
+def _resolved(model: Model, resolve: Resolver) -> list[tuple[str, str, Relation]]:
+    """Every written relation collapsed to its visible endpoints, deduped by
+    pair. ``resolve(id)`` returns the visible cell id for an endpoint, or None if
+    the endpoint has no representative in this view. Both the edges and the
+    externals a view draws come from this one list, so a box only appears when
+    an edge to it actually survives."""
     seen: set[tuple[str, str]] = set()
-    out: list[tuple[str, str]] = []
-    for rel in model.get("relations", []):
-        if "implied" in (rel.get("tags") or []):
-            continue
-        a, b = resolve(rel["from"]), resolve(rel["to"])
+    out: list[tuple[str, str, Relation]] = []
+    for rel in model.written_relations():
+        a, b = resolve(rel.source), resolve(rel.target)
         if a is None or b is None or a == b or (a, b) in seen:
             continue
         seen.add((a, b))
-        out.append((a, b))
+        out.append((a, b, rel))
     return out
 
 
-def _edges_between(model: dict[str, Any], resolve: Any) -> list[str]:
-    """Collapse every declared relation to its visible endpoints and dedupe.
-
-    ``resolve(id)`` returns the visible cell id for an endpoint, or None if the
-    endpoint has no representative in this view. Derived (``implied``) relations
-    are skipped: they are not the author's diagram.
-    """
-    seen: set[tuple[str, str]] = set()
-    out: list[str] = []
-    for rel in model.get("relations", []):
-        if "implied" in (rel.get("tags") or []):
-            continue
-        a, b = resolve(rel["from"]), resolve(rel["to"])
-        if a is None or b is None or a == b or (a, b) in seen:
-            continue
-        seen.add((a, b))
-        out.append(_edge_cell(f":e{len(out)}", _rel_label(rel), a, b))
-    return out
+def _edges(pairs: list[tuple[str, str, Relation]]) -> list[str]:
+    return [_edge_cell(f":e{i}", _rel_label(rel), a, b) for i, (a, b, rel) in enumerate(pairs)]
 
 
 # ─────────────────────────── the three levels ───────────────────────────
-def _view_c1(model: dict[str, Any]) -> dict[str, Any]:
-    _, parent = _index(model)
-    tops = [n for n in model.get("nodes", []) if n.get("type") in ("person", "softwareSystem")]
-    top_ids = {n["id"] for n in tops}
+def _view_c1(model: Model) -> Diagram:
+    tops = [n for n in model.nodes if n.type in ("person", "softwareSystem")]
+    top_ids = {n.id for n in tops}
     cells: list[str] = []
     y = 40
     for n in tops:
-        style = _STYLE.get(n["type"], _EXTERNAL)
-        cells.append(_c4_vertex(n, style, 40, y, 210, 110))
+        cells.append(_c4_vertex(n, _STYLE.get(n.type, _EXTERNAL), 40, y, 210, 110))
         y += 150
 
     def resolve(nid: str) -> str | None:
-        t = _top(nid, parent)
+        t = model.top_of(nid)
         return t if t in top_ids else None
 
-    cells += _edges_between(model, resolve)
-    return {
-        "level": "C1",
-        "scope": "system-landscape",
-        "name": f"{model.get('name', 'Architecture')} — C1 System Context",
-        "xml": _mxfile("C1 System Context", cells),
-    }
+    cells += _edges(_resolved(model, resolve))
+    return Diagram(
+        level="C1",
+        scope="system-landscape",
+        name=f"{model.name or 'Architecture'} — C1 System Context",
+        xml=_mxfile("C1 System Context", cells),
+    )
 
 
-def _view_c2(model: dict[str, Any], system: dict[str, Any]) -> dict[str, Any]:
-    by_id, parent = _index(model)
-    sid = system["id"]
-    containers = [c for c in system.get("nodes", []) if c.get("type") == "container"]
-    container_ids = {c["id"] for c in containers}
+def _externals(
+    model: Model, pairs: list[tuple[str, str, Relation]], focus: str, inside: set[str]
+) -> list[Node]:
+    """The elements outside the focus that an edge actually reaches, in first-seen order."""
+    seen: dict[str, Node] = {}
+    for a, b, _ in pairs:
+        for end in (a, b):
+            if end != focus and end not in inside and end not in seen:
+                node = model.get(end)
+                if node is not None:
+                    seen[end] = node
+    return list(seen.values())
+
+
+def _view_c2(model: Model, system: Node) -> Diagram:
+    sid = system.id
+    containers = system.children_of_type("container")
+    container_ids = {c.id for c in containers}
     cells: list[str] = []
     # boundary of the in-focus system, containers nested inside it
     ch = 100
@@ -284,46 +256,34 @@ def _view_c2(model: dict[str, Any], system: dict[str, Any]) -> dict[str, Any]:
         )
 
     def resolve(nid: str) -> str | None:
-        if nid not in by_id:
+        if nid not in model:
             return None  # dangling endpoint: the linter blocks it; never crash here
-        inside = _lift_to(nid, container_ids, parent)
+        inside = model.lift_to(nid, container_ids)
         if inside is not None:
             return inside
         # the focus system itself resolves to its boundary, drawn with id=sid;
         # anything else, to its top-level element (an external)
-        return sid if _top(nid, parent) == sid else _top(nid, parent)
+        return model.top_of(nid)
 
-    # externals are collected only from relations that actually survive, so a
-    # dropped edge never leaves an orphan box floating in the diagram
-    externals: dict[str, dict[str, Any]] = {}
-    for a, b in _resolved_pairs(model, resolve):
-        for end in (a, b):
-            if end != sid and end not in container_ids:
-                externals[end] = by_id[end]
-
+    pairs = _resolved(model, resolve)
     ey = 40
-    for ext in externals.values():
-        style = _STYLE["person"] if ext["type"] == "person" else _EXTERNAL
+    for ext in _externals(model, pairs, sid, container_ids):
+        style = _STYLE["person"] if ext.type == "person" else _EXTERNAL
         cells.append(_c4_vertex(ext, style, 600, ey, 210, 110))
         ey += 150
-    cells += _edges_between(model, resolve)
-    return {
-        "level": "C2",
-        "scope": sid,
-        "name": f"{system.get('name', sid)} — C2 Containers",
-        "xml": _mxfile(f"C2 {system.get('name', sid)}", cells),
-    }
+    cells += _edges(pairs)
+    return Diagram(
+        level="C2",
+        scope=sid,
+        name=f"{system.name} — C2 Containers",
+        xml=_mxfile(f"C2 {system.name}", cells),
+    )
 
 
-def _view_c3(
-    model: dict[str, Any],
-    container: dict[str, Any],
-    by_id: dict[str, dict[str, Any]],
-    parent: dict[str, str | None],
-) -> dict[str, Any]:
-    cid = container["id"]
-    components = [c for c in container.get("nodes", []) if c.get("type") == "component"]
-    comp_ids = {c["id"] for c in components}
+def _view_c3(model: Model, container: Node) -> Diagram:
+    cid = container.id
+    components = container.children_of_type("component")
+    comp_ids = {c.id for c in components}
     cells: list[str] = []
     ch = 90
     cells.append(
@@ -335,68 +295,63 @@ def _view_c3(
         )
 
     def resolve(nid: str) -> str | None:
-        if nid not in by_id:
+        if nid not in model:
             return None  # dangling endpoint: the linter blocks it; never crash here
-        inside = _lift_to(nid, comp_ids, parent)
+        inside = model.lift_to(nid, comp_ids)
         if inside is not None:
             return inside
         # a sibling container, a top-level system/person, or the focus container
         # itself (its boundary, drawn with id=cid) represents the endpoint
         cur: str | None = nid
         while cur is not None:
-            p = parent.get(cur)
-            if p is None or by_id[cur].get("type") in ("container", "softwareSystem", "person"):
+            node = model.get(cur)
+            if node is None:
+                return None
+            p = model.parent_of(cur)
+            if p is None or node.type in ("container", "softwareSystem", "person"):
                 return cur
             cur = p
         return None
 
-    externals: dict[str, dict[str, Any]] = {}
-    for a, b in _resolved_pairs(model, resolve):
-        for end in (a, b):
-            if end != cid and end not in comp_ids:
-                externals[end] = by_id[end]
-
+    pairs = _resolved(model, resolve)
     ey = 40
-    for ext in externals.values():
+    for ext in _externals(model, pairs, cid, comp_ids):
         style = (
             _STYLE["person"]
-            if ext["type"] == "person"
-            else (_STYLE["container"] if ext["type"] == "container" else _EXTERNAL)
+            if ext.type == "person"
+            else (_STYLE["container"] if ext.type == "container" else _EXTERNAL)
         )
         cells.append(_c4_vertex(ext, style, 600, ey, 210, 110))
         ey += 150
-    cells += _edges_between(model, resolve)
-    return {
-        "level": "C3",
-        "scope": cid,
-        "name": f"{container.get('name', cid)} — C3 Components",
-        "xml": _mxfile(f"C3 {container.get('name', cid)}", cells),
-    }
+    cells += _edges(pairs)
+    return Diagram(
+        level="C3",
+        scope=cid,
+        name=f"{container.name} — C3 Components",
+        xml=_mxfile(f"C3 {container.name}", cells),
+    )
 
 
-def to_c4_views(model: dict[str, Any]) -> list[dict[str, Any]]:
+def to_c4_views(model: Model) -> list[Diagram]:
     """Return the C4 views as independent diagrams: one C1, one C2 per system
     with containers, one C3 per container with components. Each carries its own
     standalone ``.drawio`` XML — never tabs in one file."""
-    by_id, parent = _index(model)
-    views: list[dict[str, Any]] = [_view_c1(model)]
+    views: list[Diagram] = [_view_c1(model)]
     views.extend(
         _view_c2(model, n)
-        for n in model.get("nodes", [])
-        if n.get("type") == "softwareSystem"
-        and any(c.get("type") == "container" for c in n.get("nodes", []))
+        for n in model.nodes
+        if n.type == "softwareSystem" and n.children_of_type("container")
     )
     views.extend(
-        _view_c3(model, node, by_id, parent)
-        for node in by_id.values()
-        if node.get("type") == "container"
-        and any(c.get("type") == "component" for c in node.get("nodes", []))
+        _view_c3(model, n)
+        for n in model.walk()
+        if n.type == "container" and n.children_of_type("component")
     )
     return views
 
 
-def _flat_level(model: dict[str, Any]) -> str:
-    t = set((model.get("spec") or {}).get("nodeTypes") or {})
+def _flat_level(model: Model) -> str:
+    t = model.spec.node_types
     if "actor" in t or "useCase" in t:
         return "UML"
     if "deploymentNode" in t:
@@ -407,43 +362,40 @@ def _flat_level(model: dict[str, Any]) -> str:
 _FLAT_PAD, _FLAT_HDR, _FLAT_GAP = 24, 36, 20
 
 
-def _flat_measure(node: dict[str, Any]) -> tuple[int, int]:
+def _flat_measure(node: Node) -> tuple[int, int]:
     """Bottom-up size of a node: a leaf is a fixed box; a container grows to fit
     its stacked children at any depth."""
-    kids = node.get("nodes", [])
-    if not kids:
-        return (70, 90) if node.get("type") == "actor" else (200, 80)
-    sizes = [_flat_measure(k) for k in kids]
+    if not node.nodes:
+        return (70, 90) if node.type == "actor" else (200, 80)
+    sizes = [_flat_measure(k) for k in node.nodes]
     w = max(s[0] for s in sizes) + 2 * _FLAT_PAD
-    h = _FLAT_HDR + sum(s[1] for s in sizes) + _FLAT_GAP * (len(kids) - 1) + _FLAT_PAD
+    h = _FLAT_HDR + sum(s[1] for s in sizes) + _FLAT_GAP * (len(node.nodes) - 1) + _FLAT_PAD
     return w, h
 
 
-def _view_flat(model: dict[str, Any]) -> dict[str, Any]:
+def _view_flat(model: Model) -> Diagram:
     """A single diagram for any non-C4 notation (UML, deployment, …): every
     element drawn as itself, containers nesting their children to ARBITRARY
     depth, relations as edges. No lifting is lost — every node is emitted."""
-    _, parent = _index(model)
     cells: list[str] = []
     emitted: set[str] = set()
 
-    def place(node: dict[str, Any], x: int, y: int, container: str) -> None:
-        emitted.add(node["id"])
+    def place(node: Node, x: int, y: int, container: str) -> None:
+        emitted.add(node.id)
         w, h = _flat_measure(node)
-        kids = node.get("nodes", [])
-        if not kids:
-            style = _UML_STYLE.get(node.get("type", ""), _UML_FALLBACK)
-            cells.append(_vertex(node["id"], _label(node), style, x, y, w, h, container))
+        if not node.nodes:
+            style = _UML_STYLE.get(node.type, _UML_FALLBACK)
+            cells.append(_vertex(node.id, _label(node), style, x, y, w, h, container))
             return
-        cells.append(_vertex(node["id"], _label(node), _UML_BOUNDARY, x, y, w, h, container))
+        cells.append(_vertex(node.id, _label(node), _UML_BOUNDARY, x, y, w, h, container))
         cy = _FLAT_HDR
-        for k in kids:  # children are placed in the container's own coordinates
+        for k in node.nodes:  # children are placed in the container's own coordinates
             _kw, kh = _flat_measure(k)
-            place(k, _FLAT_PAD, cy, node["id"])
+            place(k, _FLAT_PAD, cy, node.id)
             cy += kh + _FLAT_GAP
 
     ty = 40
-    for n in model.get("nodes", []):
+    for n in model.nodes:
         _w, h = _flat_measure(n)
         place(n, 40, ty, "1")
         ty += h + 50
@@ -451,20 +403,20 @@ def _view_flat(model: dict[str, Any]) -> dict[str, Any]:
     # every node is emitted, so an endpoint resolves to itself; a stray deeper id
     # (none here) would lift to the nearest drawn ancestor
     def resolve(nid: str) -> str | None:
-        return _lift_to(nid, emitted, parent)
+        return model.lift_to(nid, emitted)
 
-    cells += _edges_between(model, resolve)
+    cells += _edges(_resolved(model, resolve))
     level = _flat_level(model)
-    return {
-        "level": level,
-        "scope": model.get("scope", "diagram"),
-        "name": f"{model.get('name', 'Model')} — {level}",
-        "xml": _mxfile(level, cells),
-    }
+    return Diagram(
+        level=level,
+        scope=model.scope or "diagram",
+        name=f"{model.name or 'Model'} — {level}",
+        xml=_mxfile(level, cells),
+    )
 
 
-def to_views(model: dict[str, Any]) -> list[dict[str, Any]]:
+def to_views(model: Model) -> list[Diagram]:
     """Dispatch by notation: C4 models get the separate C1/C2/C3 views; any other
     spec (UML use cases, etc.) gets a single flat diagram. Same canonical model,
     the exporter reads its ``spec`` to decide."""
-    return to_c4_views(model) if _is_c4(model) else [_view_flat(model)]
+    return to_c4_views(model) if model.is_c4 else [_view_flat(model)]

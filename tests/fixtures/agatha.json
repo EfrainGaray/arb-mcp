@@ -1,0 +1,285 @@
+{
+  "version": "1.0",
+  "name": "Agatha",
+  "description": "Transporte de datos binarios a través de YouTube con corrección de errores BCH",
+  "spec": {
+    "nodeTypes": {
+      "person": {
+        "description": "A user of the system",
+        "contains": []
+      },
+      "softwareSystem": {
+        "description": "A software system",
+        "contains": [
+          "container"
+        ]
+      },
+      "container": {
+        "description": "Something deployable",
+        "contains": [
+          "component"
+        ]
+      },
+      "component": {
+        "description": "A part inside a container",
+        "contains": []
+      },
+      "deploymentNode": {
+        "description": "Where something runs"
+      },
+      "infrastructureNode": {
+        "description": "Load balancer, firewall, DNS",
+        "contains": []
+      },
+      "decision": {
+        "description": "Decision record",
+        "contains": [],
+        "requires": [
+          "status"
+        ]
+      }
+    },
+    "relationTypes": {
+      "uses": {},
+      "affects": {
+        "description": "Ties a decision to what it decides",
+        "from": [
+          "decision"
+        ]
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "usuario",
+      "type": "person",
+      "name": "Usuario",
+      "description": "Sube un archivo y recibe una URL de descarga"
+    },
+    {
+      "id": "correo",
+      "type": "softwareSystem",
+      "name": "Correo",
+      "description": "Entrega el enlace de descarga",
+      "technology": "Externo"
+    },
+    {
+      "id": "youtube",
+      "type": "softwareSystem",
+      "name": "YouTube",
+      "description": "Almacena los datos como video 4K y los transcodifica a VP9",
+      "technology": "Externo"
+    },
+    {
+      "id": "agatha",
+      "type": "softwareSystem",
+      "name": "Agatha",
+      "description": "Codifica archivos como frames de video, los sube y los reconstruye bit-exacto",
+      "nodes": [
+        {
+          "id": "api",
+          "type": "container",
+          "name": "API del demo",
+          "description": "Recibe archivos, encola trabajos y sirve la descarga",
+          "technology": "Python · FastAPI"
+        },
+        {
+          "id": "escaner",
+          "type": "container",
+          "name": "Escáner aislado",
+          "description": "Analiza el archivo sin red antes de tocarlo",
+          "technology": "Docker · ClamAV"
+        },
+        {
+          "id": "cli",
+          "type": "container",
+          "name": "CLI",
+          "description": "Operación manual del pipeline",
+          "technology": "Python · Typer"
+        },
+        {
+          "id": "almacen",
+          "type": "container",
+          "name": "Manifiestos",
+          "description": "Solo SHA256 y referencias remotas: mínima persistencia",
+          "technology": "SQLite",
+          "tags": [
+            "Database"
+          ]
+        },
+        {
+          "id": "core",
+          "type": "container",
+          "name": "Núcleo hexagonal",
+          "description": "Chunking, BCH, bitmap, códec y verificación",
+          "technology": "Python",
+          "nodes": [
+            {
+              "id": "servicio",
+              "type": "component",
+              "name": "Servicio de aplicación",
+              "description": "Caso de uso: recibir, transformar, entregar",
+              "technology": "Python"
+            },
+            {
+              "id": "chunker",
+              "type": "component",
+              "name": "Chunker",
+              "description": "Parte el TAR canónico en bloques de 10 MB",
+              "technology": "Python"
+            },
+            {
+              "id": "bch",
+              "type": "component",
+              "name": "Códec BCH",
+              "description": "t=16, m=15 · 30 bytes de paridad por bloque de 2048",
+              "technology": "bchlib"
+            },
+            {
+              "id": "bitmap",
+              "type": "component",
+              "name": "Bitmap 4K",
+              "description": "Empaqueta los bits en 3840x2160 · 1 pixel = 1 bit",
+              "technology": "NumPy"
+            },
+            {
+              "id": "codec",
+              "type": "component",
+              "name": "Códec de video",
+              "description": "FFV1 sin pérdida y H.264 CRF 18 para la subida",
+              "technology": "FFmpeg"
+            },
+            {
+              "id": "canal",
+              "type": "component",
+              "name": "Puerto de canal",
+              "description": "Abstrae dónde vive el video",
+              "technology": "Interfaz"
+            },
+            {
+              "id": "verificador",
+              "type": "component",
+              "name": "Verificador",
+              "description": "Compara el SHA256 del TAR reconstruido",
+              "technology": "hashlib"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "servicio",
+      "to": "chunker",
+      "type": "uses",
+      "description": "Parte el archivo"
+    },
+    {
+      "from": "chunker",
+      "to": "bch",
+      "type": "uses",
+      "description": "Protege cada bloque"
+    },
+    {
+      "from": "bch",
+      "to": "bitmap",
+      "type": "uses",
+      "description": "Bits protegidos"
+    },
+    {
+      "from": "bitmap",
+      "to": "codec",
+      "type": "uses",
+      "description": "Frames"
+    },
+    {
+      "from": "codec",
+      "to": "canal",
+      "type": "uses",
+      "description": "Bundle listo"
+    },
+    {
+      "from": "servicio",
+      "to": "verificador",
+      "type": "uses",
+      "description": "Valida la reconstrucción"
+    },
+    {
+      "from": "usuario",
+      "to": "api",
+      "type": "uses",
+      "description": "Sube un archivo y su correo",
+      "technology": "HTTPS"
+    },
+    {
+      "from": "api",
+      "to": "escaner",
+      "type": "uses",
+      "description": "Delega el análisis",
+      "technology": "docker run --network none"
+    },
+    {
+      "from": "api",
+      "to": "servicio",
+      "type": "uses",
+      "description": "Codifica y reconstruye"
+    },
+    {
+      "from": "cli",
+      "to": "servicio",
+      "type": "uses",
+      "description": "Invoca las mismas etapas"
+    },
+    {
+      "from": "servicio",
+      "to": "almacen",
+      "type": "uses",
+      "description": "Guarda el manifiesto y el SHA",
+      "technology": "SQL"
+    },
+    {
+      "from": "canal",
+      "to": "youtube",
+      "type": "uses",
+      "description": "Sube el video (unlisted) y lo recupera",
+      "technology": "OAuth · yt-dlp"
+    },
+    {
+      "from": "api",
+      "to": "correo",
+      "type": "uses",
+      "description": "Envía la URL de descarga",
+      "technology": "SMTP"
+    }
+  ],
+  "views": [
+    {
+      "id": "Contexto",
+      "title": "Contexto",
+      "include": [
+        {
+          "inside": "agatha"
+        }
+      ]
+    },
+    {
+      "id": "Contenedores",
+      "title": "Contenedores",
+      "include": [
+        {
+          "inside": "agatha"
+        }
+      ]
+    },
+    {
+      "id": "Componentes",
+      "title": "Componentes",
+      "include": [
+        {
+          "inside": "core"
+        }
+      ]
+    }
+  ]
+}

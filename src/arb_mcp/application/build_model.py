@@ -16,6 +16,7 @@ from importlib.resources import files
 from typing import Any
 
 from ..domain import loading
+from ..domain.model import Model
 from .validate_model import ValidationReport, validate_model
 
 C4_SPEC: dict[str, Any] = json.loads((files("arb_mcp.domain.specs") / "c4.json").read_text("utf-8"))
@@ -23,7 +24,7 @@ C4_SPEC: dict[str, Any] = json.loads((files("arb_mcp.domain.specs") / "c4.json")
 
 @dataclass(frozen=True, slots=True)
 class BuiltModel:
-    model: dict[str, Any]
+    model: Model
     report: ValidationReport
 
 
@@ -51,14 +52,14 @@ def build_model(
     spec = spec or C4_SPEC
     relations = [dict(r) for r in (relations or [])]
     _normalize_relations(relations, spec)
-    model = {
-        "version": "1.0",
-        "name": name or "Design",
-        "scope": "system",
-        "spec": spec,
-        "nodes": nodes,
-        "relations": relations,
-        "views": [],
-    }
-    loading.validate_schema(model)
+    model = loading.from_dict(
+        {
+            "version": "1.0",
+            "name": name or "Design",
+            "scope": "system",
+            "spec": spec,
+            "nodes": nodes,
+            "relations": relations,
+        }
+    )
     return BuiltModel(model=model, report=validate_model(model))

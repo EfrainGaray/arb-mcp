@@ -56,7 +56,7 @@ def build_model_tool(
             {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
         )
     return json.dumps(
-        {"ok": True, "model": built.model, "validation": built.report.to_dict()},
+        {"ok": True, "model": built.model.to_dict(), "validation": built.report.to_dict()},
         ensure_ascii=False,
         indent=2,
     )
@@ -66,8 +66,8 @@ def build_model_tool(
 def validate_model(source: str, include_implied: bool = False) -> str:
     """Validate a design and report whether it may merge.
 
-    ``source`` is a design in any accepted surface — ``.arch``, canonical schema
-    JSON, or Structurizr DSL; the format is detected. Returns ``may_merge``
+    ``source`` is a design in an accepted surface — canonical schema JSON or
+    Structurizr DSL; the format is detected. Returns ``may_merge``
     (false when any ERROR is present), ``blocking_count`` and all ``findings``.
     Only deterministic rules run here; nothing probabilistic changes the verdict.
     """

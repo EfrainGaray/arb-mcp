@@ -5,6 +5,7 @@ from xml.etree import ElementTree as ET
 
 from arb_mcp.application.convert_model import convert_model, drawio_views
 from arb_mcp.domain.loading import load
+from arb_mcp.domain.model import Model
 
 C4_SPEC = {
     "nodeTypes": {
@@ -18,15 +19,17 @@ C4_SPEC = {
 }
 
 
-def _m(nodes: list[dict[str, Any]], relations: list[dict[str, Any]]) -> dict[str, Any]:
-    return {
-        "version": "1.0",
-        "name": "t",
-        "scope": "system",
-        "spec": C4_SPEC,
-        "nodes": nodes,
-        "relations": relations,
-    }
+def _m(nodes: list[dict[str, Any]], relations: list[dict[str, Any]]) -> Model:
+    return Model.from_dict(
+        {
+            "version": "1.0",
+            "name": "t",
+            "scope": "system",
+            "spec": C4_SPEC,
+            "nodes": nodes,
+            "relations": relations,
+        }
+    )
 
 
 def _edges(xml: str) -> list[ET.Element]:
@@ -96,7 +99,7 @@ def test_a2_flat_no_dangling_endpoints_deep_nesting() -> None:
         ],
         "relations": [{"from": "a", "to": "uc", "type": "association"}],
     }
-    xml = drawio_views(m)[0]["xml"]
+    xml = drawio_views(Model.from_dict(m))[0]["xml"]
     ids = _vids(xml)
     for e in _edges(xml):
         assert e.get("source") in ids and e.get("target") in ids  # no dangling
@@ -106,8 +109,18 @@ def test_a2_flat_no_dangling_endpoints_deep_nesting() -> None:
 def test_a3_structurizr_skips_non_c4_endpoints() -> None:
     m = _m(
         [
-            {"id": "sys", "type": "softwareSystem", "name": "S", "docs": "d"},
-            {"id": "adr1", "type": "decision", "name": "D", "status": "accepted"},
+            {
+                "id": "sys",
+                "type": "softwareSystem",
+                "name": "S",
+                "docs": [{"title": "d", "content": "d"}],
+            },
+            {
+                "id": "adr1",
+                "type": "decision",
+                "name": "D",
+                "properties": {"status": "accepted"},
+            },
         ],
         [{"from": "adr1", "to": "sys", "type": "affects"}],
     )
@@ -122,13 +135,13 @@ def test_a4_structurizr_newline_preserved() -> None:
         [{"id": "sys", "type": "softwareSystem", "name": "S", "description": "line1\nline2"}], []
     )
     reloaded = load(convert_model(m, "structurizr"))
-    desc = reloaded["nodes"][0].get("description")
-    assert desc and "line1" in desc and "line2" in desc  # not None
+    desc = reloaded.nodes[0].description
+    assert "line1" in desc and "line2" in desc  # not lost
 
 
 # M4: C3 view produces a well-formed, endpoint-consistent diagram
 def test_m4_c3_view_is_consistent() -> None:
-    m = load(open("tests/fixtures/agatha.arch").read())
+    m = load(open("tests/fixtures/agatha.json").read())
     c3s = [v for v in drawio_views(m) if v["level"] == "C3"]
     assert c3s
     for v in c3s:

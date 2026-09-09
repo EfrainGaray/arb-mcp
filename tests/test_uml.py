@@ -6,7 +6,7 @@ drawio exporter switches stencils by reading the spec, not a flag."""
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from arb_mcp.application.convert_model import convert_model, drawio_views
+from arb_mcp.application.convert_model import drawio_views
 from arb_mcp.domain.loading import load
 
 UML = (Path(__file__).parent / "fixtures" / "uml-casos-uso.json").read_text("utf-8")
@@ -14,14 +14,13 @@ UML = (Path(__file__).parent / "fixtures" / "uml-casos-uso.json").read_text("utf
 
 def test_uml_validates_against_the_same_schema() -> None:
     m = load(UML)  # must survive the normative schema, unchanged
-    assert m["spec"]["nodeTypes"].keys() >= {"actor", "system", "useCase"}
+    assert m.spec.node_types.keys() >= {"actor", "system", "useCase"}
 
 
-def test_uml_exports_to_dsl() -> None:
-    dsl = convert_model(load(UML), "arch")
-    assert dsl.startswith("model")
-    assert 'actor "Cliente"' in dsl
-    assert "-association->" in dsl and "-include->" in dsl
+def test_uml_has_no_c4_export_but_keeps_its_relations() -> None:
+    m = load(UML)
+    assert not m.is_c4
+    assert {r.type for r in m.relations} >= {"association", "include"}
 
 
 def test_uml_drawio_uses_uml_stencil_not_c4() -> None:

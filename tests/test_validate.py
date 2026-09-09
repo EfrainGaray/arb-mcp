@@ -4,27 +4,27 @@ that the ported engine reaches directly, and the MCP tool speaks JSON on top.
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from arb_mcp.application.validate_model import validate_source
-from arb_mcp.domain._engine import convert, inspections
+from arb_mcp.domain._engine import inspections
 from arb_mcp.domain.loading import ModelError, load
 
 FIX = Path(__file__).parent / "fixtures"
-AGATHA = (FIX / "agatha.arch").read_text("utf-8")
+AGATHA = (FIX / "agatha.json").read_text("utf-8")
 
 
 def test_load_agatha_is_schema_valid() -> None:
     model = load(AGATHA)
-    assert model["nodes"]
-    assert "spec" in model
+    assert model.nodes
+    assert model.spec.node_types
 
 
 def test_use_case_matches_ported_engine() -> None:
     """The typed facade must not change a single verdict of the raw engine."""
-    model = convert.text_to_json(AGATHA)
-    raw = inspections.inspect(model)  # (severity, rule, message) tuples
+    raw = inspections.inspect(json.loads(AGATHA))  # (severity, rule, message) tuples
     report = validate_source(AGATHA)
     got = [(f.severity.value, f.rule, f.message) for f in report.findings]
     assert got == raw
@@ -89,18 +89,43 @@ def test_structurizr_surface_loads() -> None:
     """Regression for the tuple-unpacking bug: Structurizr DSL must reach a
     schema-valid canonical model, not be rejected wholesale."""
     model = load(SIMPLE_DSL)
-    assert model["nodes"]
+    assert model.nodes
     report = validate_source(SIMPLE_DSL)
     # a valid workspace produces findings, never a load failure
     assert isinstance(report.findings, list)
 
 
-def test_arch_with_workspace_word_is_not_misrouted() -> None:
-    """Regression for substring detection: the word 'workspace' inside a free
-    description must not divert an .arch file to the Structurizr converter."""
-    poisoned = AGATHA.replace('"Agatha"', '"Agatha workspace"', 1)
-    model = load(poisoned)  # must not raise
-    assert model["nodes"]
+def test_plain_text_is_refused_not_guessed() -> None:
+    """Only two surfaces exist. Anything else is a ModelError that names them,
+    never a parse attempt on a hunch."""
+    with pytest.raises(ModelError, match="Structurizr"):
+        load("model Something {\n}")
+
+
+def test_leading_comment_before_workspace_is_still_structurizr() -> None:
+    dsl = "// a comment\n" + SIMPLE_DSL
+    assert load(dsl).nodes
+
+
+def test_typed_model_round_trips_the_wire_form() -> None:
+    """from_dict(d).to_dict() keeps every fact of every fixture: the typed model
+    is a mirror of the schema, not a lossy view of it."""
+    from arb_mcp.domain.model import Model
+
+    for name in ("agatha.json", "despliegue.json", "uml-casos-uso.json"):
+        raw = json.loads((FIX / name).read_text("utf-8"))
+        again = Model.from_dict(raw).to_dict()
+        assert Model.from_dict(again) == Model.from_dict(raw), name
+        assert _facts(again) == _facts(raw), name
+
+
+def _facts(d: Any) -> Any:
+    """A dict with its empty optionals dropped, so absent and empty compare equal."""
+    if isinstance(d, dict):
+        return {k: _facts(v) for k, v in d.items() if v not in (None, "", [], {})}
+    if isinstance(d, list):
+        return [_facts(x) for x in d]
+    return d
 
 
 def test_empty_model_cannot_merge() -> None:

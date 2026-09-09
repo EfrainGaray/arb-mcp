@@ -12,6 +12,7 @@ from typing import Any
 from ..domain import loading
 from ..domain.findings import Finding
 from ..domain.linter import lint
+from ..domain.model import Model
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +35,7 @@ class ValidationReport:
         }
 
 
-def validate_model(model: dict[str, Any], *, include_implied: bool = False) -> ValidationReport:
+def validate_model(model: Model, *, include_implied: bool = False) -> ValidationReport:
     """Lint an already-loaded canonical model. The verdict is the model's;
     no re-parsing through any text surface."""
     findings: list[Finding] = lint(model, include_implied=include_implied)

@@ -163,7 +163,7 @@ whether it may merge.
 
 | name | type | default | semantics |
 |---|---|---|---|
-| `source` | `string` | required | a design as text. Format is **detected**: starts with `{` → canonical JSON; starts with `workspace` (comments allowed before it) → Structurizr DSL; otherwise `.arch`. Detection is anchored at the start of the text, so a stray `workspace` inside a description cannot hijack it. |
+| `source` | `string` | required | a design as text. Format is **detected**: starts with `{` → canonical JSON; starts with `workspace` (comments allowed before it) → Structurizr DSL; anything else is refused with `invalid_model` naming the two surfaces. Detection is anchored at the start of the text, so a stray `workspace` inside a description cannot hijack it. |
 | `include_implied` | `bool` | `false` | also derive the implied relations (Structurizr's `CreateImpliedRelationshipsUnlessAnyRelationshipExists`, persons never counting as parent or child) and lint those too. With `true`, rule counts match the official CLI, which inspects derived relations; with `false`, only what the author wrote is judged. |
 
 **Returns.**
@@ -206,7 +206,7 @@ the same model the linter validated, so a diagram and its verdict cannot drift.
 | name | type | default | semantics |
 |---|---|---|---|
 | `source` | `string` | required | any accepted surface; detected as above. |
-| `to` | `string` | `"drawio"` | target. Advertised: `drawio`, `structurizr`. Also accepted, unadvertised: `arch` (audit M5). |
+| `to` | `string` | `"drawio"` | target: `drawio` or `structurizr`. |
 
 **Returns, `to="drawio"`.** JSON with the C4 views as **separate diagrams**, one
 standalone `<mxfile>` each — one C1 (System Context), one C2 per software system,

@@ -6,24 +6,27 @@ from typing import Any
 from arb_mcp.application.build_model import build_model
 from arb_mcp.application.convert_model import drawio_views
 from arb_mcp.application.validate_model import validate_model
+from arb_mcp.domain.model import Model
 
 
-def _model(nodes: list[dict[str, Any]], relations: list[dict[str, Any]]) -> dict[str, Any]:
-    return {
-        "version": "1.0",
-        "name": "t",
-        "scope": "system",
-        "spec": {
-            "nodeTypes": {
-                "person": {"contains": []},
-                "softwareSystem": {"contains": ["container"]},
-                "container": {"contains": []},
+def _model(nodes: list[dict[str, Any]], relations: list[dict[str, Any]]) -> Model:
+    return Model.from_dict(
+        {
+            "version": "1.0",
+            "name": "t",
+            "scope": "system",
+            "spec": {
+                "nodeTypes": {
+                    "person": {"contains": []},
+                    "softwareSystem": {"contains": ["container"]},
+                    "container": {"contains": []},
+                },
+                "relationTypes": {"uses": {}},
             },
-            "relationTypes": {"uses": {}},
-        },
-        "nodes": nodes,
-        "relations": relations,
-    }
+            "nodes": nodes,
+            "relations": relations,
+        }
+    )
 
 
 def test_dangling_relation_endpoint_blocks_and_never_crashes() -> None:

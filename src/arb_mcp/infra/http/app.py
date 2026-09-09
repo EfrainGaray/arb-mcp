@@ -176,7 +176,7 @@ def create_app(token: str | None = None, *, auth: Authenticator | None = None) -
         except ModelError as exc:
             return JSONResponse({"ok": False, "error": "invalid_model", "detail": str(exc)}, 422)
         return JSONResponse(
-            {"ok": True, "model": built.model, "validation": built.report.to_dict()}
+            {"ok": True, "model": built.model.to_dict(), "validation": built.report.to_dict()}
         )
 
     @app.post("/v1/validate", tags=["tools"])

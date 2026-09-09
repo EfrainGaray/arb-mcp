@@ -10,8 +10,11 @@ validation path by construction.
 
 ## Layers (clean)
 
-- `domain/` — the vendored, bit-for-bit engine (schema, grammar, inspections,
-  implied relations) behind a typed facade (`findings`, `loading`, `linter`).
+- `domain/` — the typed canonical model (`model.py`: frozen `Model`, `Node`,
+  `Relation`, `Spec`, mirrors of the normative JSON Schema), the loader that
+  holds any input to the schema, the linter, and the exporters (drawio,
+  Structurizr). The vendored inspections engine sits behind `linter.py` and is
+  fed the wire form at that one boundary.
 - `application/` — use cases and ports.
 - `infra/` — transport adapters: stdio for the architect, HTTP (FastAPI) for CI and demos, authenticated against the organisation's identity provider (OIDC/JWT) or a static token for local work.
 

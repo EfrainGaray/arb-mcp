@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from ..domain.model import Model
 from .ports import CatalogEntry, CatalogPort
 
 # Canonical types that map to catalog fact sheets. A person or a decision is not
@@ -39,30 +40,21 @@ class CatalogReport:
         }
 
 
-def _walk(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for n in nodes:
-        out.append(n)
-        out.extend(_walk(n.get("nodes", [])))
-    return out
-
-
-def check_catalog(model: dict[str, Any], catalog: CatalogPort) -> CatalogReport:
+def check_catalog(model: Model, catalog: CatalogPort) -> CatalogReport:
     """Look every catalog-relevant component up in the source of truth."""
     report = CatalogReport()
-    for n in _walk(model.get("nodes", [])):
-        if n.get("type") not in _CATALOG_TYPES:
+    for n in model.walk():
+        if n.type not in _CATALOG_TYPES:
             continue
-        name = str(n.get("name", n["id"]))
-        entry: CatalogEntry | None = catalog.lookup(name, n["type"])
+        entry: CatalogEntry | None = catalog.lookup(n.name, n.type)
         if entry is None:
-            report.unknown.append({"id": n["id"], "name": name, "type": n["type"]})
+            report.unknown.append({"id": n.id, "name": n.name, "type": n.type})
         else:
             report.known.append(
                 {
-                    "id": n["id"],
-                    "name": name,
-                    "type": n["type"],
+                    "id": n.id,
+                    "name": n.name,
+                    "type": n.type,
                     "catalog_id": entry.catalog_id,
                     "catalog_name": entry.name,
                 }

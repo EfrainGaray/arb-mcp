@@ -35,14 +35,14 @@ DRAFT_RELS = [{"from": "user", "to": "web", "description": "Uses", "technology":
 def test_build_injects_spec_and_validates() -> None:
     built = build_model(DRAFT_NODES, DRAFT_RELS, name="Demo")
     assert isinstance(built, BuiltModel)
-    assert built.model["spec"]["nodeTypes"]  # spec injected, not supplied by the agent
-    assert built.model["nodes"]
+    assert built.model.spec.node_types  # spec injected, not supplied by the agent
+    assert built.model.nodes
     assert isinstance(built.report.may_merge, bool)
 
 
 def test_missing_relation_type_is_defaulted() -> None:
     built = build_model(DRAFT_NODES, DRAFT_RELS)
-    assert built.model["relations"][0]["type"] == "uses"  # spec default filled in
+    assert built.model.relations[0].type == "uses"  # spec default filled in
 
 
 def test_malformed_draft_fails_with_a_reason() -> None:
@@ -55,7 +55,7 @@ def test_include_implied_adds_derived_relations_to_validation() -> None:
     from arb_mcp.application.validate_model import validate_model as vm
     from arb_mcp.domain.loading import load
 
-    m = load(open("tests/fixtures/agatha.arch").read())
+    m = load(open("tests/fixtures/agatha.json").read())
     base = vm(m, include_implied=False)
     derived = vm(m, include_implied=True)
     # deriving relations can only keep or change findings, never crash
