@@ -171,5 +171,8 @@ def test_audit_caller_is_who_called_not_who_is_configured(
         client.get("/v1/contract")
     entries = [json.loads(r.getMessage()) for r in caplog.records if r.name == "arb_mcp.audit"]
     assert [e["status"] for e in entries] == [200, 401, 401]
-    assert entries[0]["caller"] != entries[1]["caller"]
+    assert entries[0]["caller"].startswith("static:")
+    # a presented-but-refused credential is its own event, distinct from a probe
+    assert entries[1]["caller"].startswith("rejected:")
+    assert entries[1]["caller"] != entries[0]["caller"]
     assert entries[2]["caller"] == "anonymous"

@@ -19,6 +19,7 @@ failure the tools already distinguish:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import time
@@ -94,9 +95,15 @@ class _Guard(BaseHTTPMiddleware):
         t0 = time.perf_counter()
         caller = "anonymous"
         if not request.url.path.startswith(_OPEN_PATHS):
+            header = request.headers.get("authorization", "")
             try:
-                caller = self._auth.authenticate(request.headers.get("authorization", "")).subject
+                caller = self._auth.authenticate(header).subject
             except AuthError as exc:
+                # A presented-but-refused credential is not the same event as an
+                # anonymous probe, and an auditor needs to tell them apart: name it
+                # by a hash prefix of what was presented, never by the credential.
+                if header.startswith("Bearer ") and header[7:].strip():
+                    caller = "rejected:" + hashlib.sha256(header[7:].encode()).hexdigest()[:12]
                 response = self._rejected(exc)
                 self._log(request, response, t0, caller)
                 return response
