@@ -10,3 +10,4 @@ lab/
 .coverage
 coverage.xml
 htmlcov/
+.hypothesis/
