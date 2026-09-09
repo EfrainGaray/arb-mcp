@@ -41,6 +41,16 @@ just built (not the source tree), and the image carries OCI labels with the
 version and commit. Version has one source: `pyproject.toml`, read at runtime
 through `importlib.metadata` and reported by `/health`.
 
+## Version and changelog
+
+    make changelog      # what the next release would say
+    make bump           # version from the commits, CHANGELOG.md, tag v*
+    git push --follow-tags
+
+commitizen reads the conventional commits the commit-msg hook already enforces:
+`fix` bumps patch, `feat` minor, a `BREAKING CHANGE` footer major. Nobody edits
+the version or the changelog by hand.
+
 ## Develop
 
     python -m venv .venv && . .venv/bin/activate

@@ -10,7 +10,7 @@ IMAGE   ?= arb-mcp
 REGISTRY ?=
 
 .PHONY: install lint format typecheck test layers deps audit ci \
-        build sbom image push checksums release version
+        build sbom image push checksums release version bump changelog
 
 install:
 	$(PY) -m pip install --quiet --upgrade pip setuptools
@@ -64,3 +64,11 @@ checksums:  ## portable: no sha256sum on macOS
 
 release: build sbom checksums image  ## everything a reviewer needs, reproducibly
 	@echo "release $(VERSION) ($(VCS_REF)): dist/ + $(IMAGE):$(VERSION)"
+
+# ── version: decided by the commits, never by hand ──────────────────────────
+changelog:  ## preview the unreleased section
+	cz changelog --dry-run --unreleased-version "next"
+
+bump:  ## patch/minor/major from the commit types since the last tag; writes pyproject,
+	## CHANGELOG.md and the v* tag. `git push --follow-tags` then triggers the release.
+	cz bump --changelog --yes
