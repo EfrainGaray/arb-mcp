@@ -51,7 +51,7 @@ ignore = ["PLR0913", "PLR0917"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src/arb_mcp"]
+files = ["src/arb_mcp", "tests"]
 exclude = ["src/arb_mcp/domain/_engine/"]
 
 [[tool.mypy.overrides]]

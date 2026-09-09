@@ -1,13 +1,14 @@
 """Regressions for Fable's second audit: referential integrity and cell ids."""
 
 import json
+from typing import Any
 
 from arb_mcp.application.build_model import build_model
 from arb_mcp.application.convert_model import drawio_views
 from arb_mcp.application.validate_model import validate_model
 
 
-def _model(nodes, relations):
+def _model(nodes: list[dict[str, Any]], relations: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "version": "1.0",
         "name": "t",
@@ -25,7 +26,7 @@ def _model(nodes, relations):
     }
 
 
-def test_dangling_relation_endpoint_blocks_and_never_crashes():
+def test_dangling_relation_endpoint_blocks_and_never_crashes() -> None:
     m = _model(
         [{"id": "api", "type": "softwareSystem", "name": "API"}],
         [{"from": "api", "to": "ghost", "type": "uses"}],
@@ -38,7 +39,7 @@ def test_dangling_relation_endpoint_blocks_and_never_crashes():
     assert views  # C1 at least, no KeyError
 
 
-def test_duplicate_id_is_blocked():
+def test_duplicate_id_is_blocked() -> None:
     m = _model(
         [
             {"id": "a", "type": "person", "name": "A"},
@@ -50,7 +51,7 @@ def test_duplicate_id_is_blocked():
     assert any(f.rule == "model.id.duplicate" for f in report.blocking)
 
 
-def test_edge_cell_id_cannot_collide_with_a_node_id():
+def test_edge_cell_id_cannot_collide_with_a_node_id() -> None:
     """A node literally named 'e0' must not clash with the first edge's cell id."""
     m = _model(
         [
@@ -68,20 +69,20 @@ def test_edge_cell_id_cannot_collide_with_a_node_id():
     assert "e0" not in edge_ids  # the edge id is namespaced (:e0), no clash
 
 
-def test_build_model_does_not_mutate_callers_relations():
+def test_build_model_does_not_mutate_callers_relations() -> None:
     rels = [{"from": "a", "to": "b"}]
     build_model([{"id": "a", "type": "person", "name": "A"}], rels)
     assert "type" not in rels[0]  # caller's dict untouched
 
 
-def test_excessive_nesting_is_a_model_error():
+def test_excessive_nesting_is_a_model_error() -> None:
     """Fable B2: agent-generated deep nesting fails as ModelError, not RecursionError."""
     from arb_mcp.domain.loading import ModelError, load
 
-    node = {"id": "n0", "type": "deploymentNode", "name": "n"}
+    node: dict[str, Any] = {"id": "n0", "type": "deploymentNode", "name": "n"}
     cur = node
     for i in range(1, 40):
-        child = {"id": f"n{i}", "type": "deploymentNode", "name": "n"}
+        child: dict[str, Any] = {"id": f"n{i}", "type": "deploymentNode", "name": "n"}
         cur["nodes"] = [child]
         cur = child
     model = json.dumps(

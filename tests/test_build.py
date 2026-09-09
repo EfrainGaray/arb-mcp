@@ -4,12 +4,14 @@ No LLM, no network. Proves the agent's draft becomes a schema-valid model, that
 the fixed spec is injected, and that a malformed draft fails with a reason
 rather than being accepted."""
 
+from typing import Any
+
 import pytest
 
 from arb_mcp.application.build_model import BuiltModel, build_model
 from arb_mcp.domain.loading import ModelError
 
-DRAFT_NODES = [
+DRAFT_NODES: list[dict[str, Any]] = [
     {"id": "user", "type": "person", "name": "User", "description": "An end user"},
     {
         "id": "sys",
@@ -30,7 +32,7 @@ DRAFT_NODES = [
 DRAFT_RELS = [{"from": "user", "to": "web", "description": "Uses", "technology": "HTTPS"}]
 
 
-def test_build_injects_spec_and_validates():
+def test_build_injects_spec_and_validates() -> None:
     built = build_model(DRAFT_NODES, DRAFT_RELS, name="Demo")
     assert isinstance(built, BuiltModel)
     assert built.model["spec"]["nodeTypes"]  # spec injected, not supplied by the agent
@@ -38,17 +40,17 @@ def test_build_injects_spec_and_validates():
     assert isinstance(built.report.may_merge, bool)
 
 
-def test_missing_relation_type_is_defaulted():
+def test_missing_relation_type_is_defaulted() -> None:
     built = build_model(DRAFT_NODES, DRAFT_RELS)
     assert built.model["relations"][0]["type"] == "uses"  # spec default filled in
 
 
-def test_malformed_draft_fails_with_a_reason():
+def test_malformed_draft_fails_with_a_reason() -> None:
     with pytest.raises(ModelError):
         build_model([{"id": "x"}])  # node missing type/name
 
 
-def test_include_implied_adds_derived_relations_to_validation():
+def test_include_implied_adds_derived_relations_to_validation() -> None:
     """The implied-relations branch of the linter must actually run."""
     from arb_mcp.application.validate_model import validate_model as vm
     from arb_mcp.domain.loading import load
@@ -60,7 +62,7 @@ def test_include_implied_adds_derived_relations_to_validation():
     assert isinstance(base.findings, list) and isinstance(derived.findings, list)
 
 
-def test_describe_contract_returns_spec_and_schema():
+def test_describe_contract_returns_spec_and_schema() -> None:
     import json
 
     from arb_mcp.infra.mcp.stdio_server import describe_contract

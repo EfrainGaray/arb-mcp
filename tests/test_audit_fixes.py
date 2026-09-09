@@ -1,5 +1,6 @@
 """Regressions for Fable's integral audit (A1-A4). Each fails before its fix."""
 
+from typing import Any
 from xml.etree import ElementTree as ET
 
 from arb_mcp.application.convert_model import convert_model, drawio_views
@@ -17,7 +18,7 @@ C4_SPEC = {
 }
 
 
-def _m(nodes, relations):
+def _m(nodes: list[dict[str, Any]], relations: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "version": "1.0",
         "name": "t",
@@ -28,11 +29,11 @@ def _m(nodes, relations):
     }
 
 
-def _edges(xml):
+def _edges(xml: str) -> list[ET.Element]:
     return [c for c in ET.fromstring(xml).iter("mxCell") if c.get("edge") == "1"]
 
 
-def _vids(xml):
+def _vids(xml: str) -> set[str | None]:
     r = ET.fromstring(xml)
     return {o.get("id") for o in r.iter("object")} | {
         c.get("id") for c in r.iter("mxCell") if c.get("vertex") == "1" and c.get("id")
@@ -40,7 +41,7 @@ def _vids(xml):
 
 
 # A1: a relation to the focus system must survive in C2, source drawn
-def test_a1_relation_to_focus_system_survives_in_c2():
+def test_a1_relation_to_focus_system_survives_in_c2() -> None:
     m = _m(
         [
             {"id": "user", "type": "person", "name": "U"},
@@ -62,7 +63,7 @@ def test_a1_relation_to_focus_system_survives_in_c2():
 
 
 # A2: flat view with 3-level nesting must not emit dangling endpoints
-def test_a2_flat_no_dangling_endpoints_deep_nesting():
+def test_a2_flat_no_dangling_endpoints_deep_nesting() -> None:
     spec = {
         "nodeTypes": {
             "actor": {"contains": []},
@@ -102,7 +103,7 @@ def test_a2_flat_no_dangling_endpoints_deep_nesting():
 
 
 # A3: structurizr must not emit a relation to an undeclared (non-C4) endpoint
-def test_a3_structurizr_skips_non_c4_endpoints():
+def test_a3_structurizr_skips_non_c4_endpoints() -> None:
     m = _m(
         [
             {"id": "sys", "type": "softwareSystem", "name": "S", "docs": "d"},
@@ -116,7 +117,7 @@ def test_a3_structurizr_skips_non_c4_endpoints():
 
 
 # A4: a newline in a description must not silently vanish on round-trip
-def test_a4_structurizr_newline_preserved():
+def test_a4_structurizr_newline_preserved() -> None:
     m = _m(
         [{"id": "sys", "type": "softwareSystem", "name": "S", "description": "line1\nline2"}], []
     )
@@ -126,7 +127,7 @@ def test_a4_structurizr_newline_preserved():
 
 
 # M4: C3 view produces a well-formed, endpoint-consistent diagram
-def test_m4_c3_view_is_consistent():
+def test_m4_c3_view_is_consistent() -> None:
     m = load(open("tests/fixtures/agatha.arch").read())
     c3s = [v for v in drawio_views(m) if v["level"] == "C3"]
     assert c3s

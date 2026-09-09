@@ -15,13 +15,13 @@ FIX = Path(__file__).parent / "fixtures"
 AGATHA = (FIX / "agatha.arch").read_text("utf-8")
 
 
-def test_load_agatha_is_schema_valid():
+def test_load_agatha_is_schema_valid() -> None:
     model = load(AGATHA)
     assert model["nodes"]
     assert "spec" in model
 
 
-def test_use_case_matches_ported_engine():
+def test_use_case_matches_ported_engine() -> None:
     """The typed facade must not change a single verdict of the raw engine."""
     model = convert.text_to_json(AGATHA)
     raw = inspections.inspect(model)  # (severity, rule, message) tuples
@@ -30,7 +30,7 @@ def test_use_case_matches_ported_engine():
     assert got == raw
 
 
-def test_agatha_has_blocking_findings():
+def test_agatha_has_blocking_findings() -> None:
     """Agatha's hexagonal core holds components but is undocumented — an ERROR."""
     report = validate_source(AGATHA)
     assert not report.may_merge
@@ -38,7 +38,7 @@ def test_agatha_has_blocking_findings():
     assert all(f.severity.value == "ERROR" for f in report.blocking)
 
 
-def test_undeclared_node_type_is_blocking():
+def test_undeclared_node_type_is_blocking() -> None:
     """The spec is the vocabulary. A type it does not declare must not pass the gate.
 
     Before this rule a node typed "nope" reached may_merge=true and the engine
@@ -52,7 +52,7 @@ def test_undeclared_node_type_is_blocking():
     assert "model.type.undeclared" in rules
 
 
-def test_undeclared_relation_type_is_blocking():
+def test_undeclared_relation_type_is_blocking() -> None:
     from arb_mcp.application.build_model import build_model
 
     nodes = [
@@ -63,18 +63,18 @@ def test_undeclared_relation_type_is_blocking():
     assert "model.relation.type.undeclared" in [f.rule for f in built.report.blocking]
 
 
-def test_declared_types_do_not_trigger_the_rule():
+def test_declared_types_do_not_trigger_the_rule() -> None:
     """Agatha only uses declared types: the new rule must add nothing to its verdict."""
     report = validate_source(AGATHA)
     assert not [f for f in report.findings if f.rule.endswith("type.undeclared")]
 
 
-def test_invalid_source_is_a_model_error_not_a_crash():
+def test_invalid_source_is_a_model_error_not_a_crash() -> None:
     with pytest.raises(ModelError):
         load("this is not a design at all {{{")
 
 
-def test_mcp_tool_returns_json():
+def test_mcp_tool_returns_json() -> None:
     from arb_mcp.infra.mcp.stdio_server import validate_model
 
     out = json.loads(validate_model(AGATHA))
@@ -85,7 +85,7 @@ def test_mcp_tool_returns_json():
 SIMPLE_DSL = (FIX / "simple.dsl").read_text("utf-8")
 
 
-def test_structurizr_surface_loads():
+def test_structurizr_surface_loads() -> None:
     """Regression for the tuple-unpacking bug: Structurizr DSL must reach a
     schema-valid canonical model, not be rejected wholesale."""
     model = load(SIMPLE_DSL)
@@ -95,7 +95,7 @@ def test_structurizr_surface_loads():
     assert isinstance(report.findings, list)
 
 
-def test_arch_with_workspace_word_is_not_misrouted():
+def test_arch_with_workspace_word_is_not_misrouted() -> None:
     """Regression for substring detection: the word 'workspace' inside a free
     description must not divert an .arch file to the Structurizr converter."""
     poisoned = AGATHA.replace('"Agatha"', '"Agatha workspace"', 1)
@@ -103,7 +103,7 @@ def test_arch_with_workspace_word_is_not_misrouted():
     assert model["nodes"]
 
 
-def test_empty_model_cannot_merge():
+def test_empty_model_cannot_merge() -> None:
     """Regression: a schema-valid model with zero nodes must be blocked."""
     empty = json.dumps(
         {

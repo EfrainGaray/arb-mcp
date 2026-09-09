@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import urllib.request
 from typing import Any
 
 import jwt
@@ -213,6 +214,6 @@ def test_discovery_rejects_a_document_for_another_issuer(monkeypatch: pytest.Mon
                 {"issuer": "https://other.test", "jwks_uri": "https://other.test/jwks"}
             ).encode()
 
-    monkeypatch.setattr(auth_mod.urllib.request, "urlopen", lambda *_a, **_k: _Resp())
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *_a, **_k: _Resp())
     with pytest.raises(RuntimeError):
         auth_mod._discover_jwks_url(ISS)
