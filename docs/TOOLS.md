@@ -141,12 +141,16 @@ Full detail — verification order, every variable, status codes, the audit line
 IdP recipe and what is not implemented — in [AUTH.md](AUTH.md).
 
 **Audit.** One JSON line per request on the `arb_mcp.audit` logger — method, path,
-status, milliseconds, and `caller` (a 12-hex prefix of the token's SHA-256, enough
-to tell two tokens apart; the token itself is never logged).
+status, milliseconds, and `caller`: the verified subject (client id for a machine,
+`sub` for a person; a hash prefix in static mode), `rejected:<hash prefix>` when a
+credential was presented and refused, `anonymous` when none was. The credential
+itself is never logged.
 
-**Run.** `ARB_HTTP_TOKEN=… arb-mcp-http` (binds `127.0.0.1:8000`; set
-`ARB_HTTP_HOST=0.0.0.0` only behind TLS). Or the image: `Dockerfile` is
-multi-stage, runs as a non-root user, and has a `/health` HEALTHCHECK.
+**Run.** Production: the OIDC variables (`ARB_OIDC_ISSUER`, `ARB_OIDC_AUDIENCE`,
+optional `ARB_OIDC_SCOPE` / `ARB_OIDC_JWKS_URL`) via `--env-file`, then `arb-mcp-http`.
+Local: `ARB_HTTP_TOKEN=… arb-mcp-http`. Binds `127.0.0.1:8000`; set `ARB_HTTP_HOST=0.0.0.0`
+only behind TLS. Or the image: `Dockerfile` is multi-stage, runs as a non-root user, and
+has a `/health` HEALTHCHECK.
 
 ---
 
