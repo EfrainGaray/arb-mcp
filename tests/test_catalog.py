@@ -8,7 +8,7 @@ class FakeCatalog:
     def __init__(self, known):
         self._known = known  # set of names present in the catalog
 
-    def lookup(self, name, kind):
+    def lookup(self, name, kind):  # noqa: ARG002 - signature fixed by CatalogPort
         if name in self._known:
             return CatalogEntry(catalog_id=f"fs-{name}", name=name, type="Application")
         return None

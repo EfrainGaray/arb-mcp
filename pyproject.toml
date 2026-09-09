@@ -12,8 +12,11 @@ dependencies = [
 [project.optional-dependencies]
 # The HTTP adapter is opt-in so the core (domain + application + stdio) stays free of
 # any web framework. `pip install arb-mcp[http]` for CI or the demo.
-http = ["fastapi>=0.115", "uvicorn>=0.30", "PyJWT[crypto]>=2.9"]
-dev = ["ruff>=0.6", "mypy>=1.11", "pytest>=8.0", "types-jsonschema>=4.21", "httpx>=0.27", "pre-commit>=3.8", "pytest-cov>=5.0"]
+# pydantic and starlette are imported directly by the adapter, so they are declared
+# directly: relying on fastapi to drag them in is a transitive dependency that a
+# fastapi upgrade could silently break (deptry DEP003).
+http = ["fastapi>=0.115", "starlette>=0.40", "pydantic>=2.0", "uvicorn>=0.30", "PyJWT[crypto]>=2.9"]
+dev = ["ruff>=0.6", "mypy>=1.11", "pytest>=8.0", "types-jsonschema>=4.21", "httpx>=0.27", "pre-commit>=3.8", "pytest-cov>=5.0", "import-linter>=2.0", "deptry>=0.20", "pip-audit>=2.7"]
 
 [project.scripts]
 arb-mcp = "arb_mcp.infra.mcp.stdio_server:main"
@@ -31,10 +34,19 @@ line-length = 100
 target-version = "py311"
 extend-exclude = ["src/arb_mcp/domain/_engine"]
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+# Correctness, imports, modernisation, bugbear, simplification — plus what a bank
+# reviewer asks for: S (bandit security), ARG/ERA/T20 (dead or debugging code),
+# PTH/PERF/FURB/RUF (idioms), N (naming), LOG/G (logging), PL (pylint subset).
+select = ["E", "F", "I", "UP", "B", "SIM", "S", "RUF", "C4", "PTH", "PT", "ARG",
+          "T20", "ERA", "N", "PERF", "FURB", "LOG", "G", "PL"]
+# Argument-count limits are a style preference, not a defect; the drawio cell
+# builders legitimately take x, y, w, h, style, label, parent.
+ignore = ["PLR0913", "PLR0917"]
 [tool.ruff.lint.per-file-ignores]
-# tests read fixtures inline and use throwaway multi-statement setup
-"tests/**" = ["SIM115", "E702"]
+# Tests assert (S101), compare literals (PLR2004), compound-assert (PT018), parse
+# the XML they themselves produced (S314), hold a fake token (S105), and import
+# inline to keep each test self-contained (PLC0415, PTH123).
+"tests/**" = ["SIM115", "E702", "S101", "S105", "S314", "PT018", "PLR2004", "PLC0415", "PTH123"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -72,3 +84,9 @@ exclude_also = [
     "if TYPE_CHECKING:",
     "\\.\\.\\.",                      # Protocol bodies
 ]
+
+[tool.deptry]
+# Dev tools are not imported by the package; they are commands. Tell deptry so it
+# does not report them as unused, and keep DEP003 (a transitive import) as an error:
+# that is exactly the silent missing dependency this gate exists to catch.
+pep621_dev_dependency_groups = ["dev"]

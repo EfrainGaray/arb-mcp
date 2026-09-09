@@ -1,4 +1,4 @@
-"""Regressions for Fable's integral audit (A1–A4). Each fails before its fix."""
+"""Regressions for Fable's integral audit (A1-A4). Each fails before its fix."""
 from xml.etree import ElementTree as ET
 
 from arb_mcp.application.convert_model import convert_model, drawio_views

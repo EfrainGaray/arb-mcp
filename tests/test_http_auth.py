@@ -74,7 +74,7 @@ def test_person_token_falls_back_to_sub(keys: tuple[Any, Any], jwt_auth: JwtAuth
     assert p.subject == "efrain"
 
 
-@pytest.mark.parametrize("bad, status", [
+@pytest.mark.parametrize(("bad", "status"), [
     ({"exp": int(time.time()) - 3600}, 401),          # expired
     ({"aud": "someone-else"}, 401),                    # wrong audience
     ({"iss": "https://evil.example.test"}, 401),      # wrong issuer
@@ -89,7 +89,7 @@ def test_refusals(
     assert e.value.status == status
 
 
-def test_wrong_signing_key_is_401(keys: tuple[Any, Any], other_key: Any, jwt_auth: JwtAuth) -> None:
+def test_wrong_signing_key_is_401(other_key: Any, jwt_auth: JwtAuth) -> None:
     with pytest.raises(AuthError) as e:
         jwt_auth.authenticate("Bearer " + mint(other_key))
     assert e.value.status == 401
@@ -189,6 +189,6 @@ def test_discovery_rejects_a_document_for_another_issuer(monkeypatch: pytest.Mon
         def read(self) -> bytes:
             return json.dumps({"issuer": "https://other.test", "jwks_uri": "https://other.test/jwks"}).encode()
 
-    monkeypatch.setattr(auth_mod.urllib.request, "urlopen", lambda *a, **k: _Resp())
+    monkeypatch.setattr(auth_mod.urllib.request, "urlopen", lambda *_a, **_k: _Resp())
     with pytest.raises(RuntimeError):
         auth_mod._discover_jwks_url(ISS)

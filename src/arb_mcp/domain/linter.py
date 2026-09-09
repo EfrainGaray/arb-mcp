@@ -76,11 +76,11 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
                             f'The relation {rel.get("from")} -> {rel.get("to")} has type '
                             f'"{t}", which the spec does not declare.')
                 )
-    for dup in sorted({i for i in ids if ids.count(i) > 1}):
-        findings.append(
-            Finding(Severity.ERROR, "model.id.duplicate",
-                    f'The id "{dup}" is declared by more than one element.')
-        )
+    findings.extend(
+        Finding(Severity.ERROR, "model.id.duplicate",
+                f'The id "{dup}" is declared by more than one element.')
+        for dup in sorted({i for i in ids if ids.count(i) > 1})
+    )
     for rel in model.get("relations", []):
         if "implied" in (rel.get("tags") or []):
             continue

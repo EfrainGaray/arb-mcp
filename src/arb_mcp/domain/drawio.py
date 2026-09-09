@@ -347,16 +347,18 @@ def to_c4_views(model: dict[str, Any]) -> list[dict[str, Any]]:
     standalone ``.drawio`` XML — never tabs in one file."""
     by_id, parent = _index(model)
     views: list[dict[str, Any]] = [_view_c1(model)]
-    for n in model.get("nodes", []):
-        if n.get("type") == "softwareSystem" and any(
-            c.get("type") == "container" for c in n.get("nodes", [])
-        ):
-            views.append(_view_c2(model, n))
-    for node in by_id.values():
-        if node.get("type") == "container" and any(
-            c.get("type") == "component" for c in node.get("nodes", [])
-        ):
-            views.append(_view_c3(model, node, by_id, parent))
+    views.extend(
+        _view_c2(model, n)
+        for n in model.get("nodes", [])
+        if n.get("type") == "softwareSystem"
+        and any(c.get("type") == "container" for c in n.get("nodes", []))
+    )
+    views.extend(
+        _view_c3(model, node, by_id, parent)
+        for node in by_id.values()
+        if node.get("type") == "container"
+        and any(c.get("type") == "component" for c in node.get("nodes", []))
+    )
     return views
 
 

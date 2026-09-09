@@ -1,0 +1,42 @@
+# Layer contract, enforced: the clean-phase rule "no imports upward" as a gate,
+# not as a convention. `lint-imports` fails the commit if infra leaks into
+# application or application into domain, and if domain imports any framework.
+[importlinter]
+root_package = arb_mcp
+include_external_packages = True
+
+[importlinter:contract:layers]
+name = domain <- application <- infra
+type = layers
+layers =
+    arb_mcp.infra
+    arb_mcp.application
+    arb_mcp.domain
+
+[importlinter:contract:domain-is-framework-free]
+name = domain imports no framework
+type = forbidden
+source_modules =
+    arb_mcp.domain
+forbidden_modules =
+    fastapi
+    starlette
+    pydantic
+    uvicorn
+    mcp
+    jwt
+    httpx
+    requests
+
+[importlinter:contract:application-is-framework-free]
+name = application imports no transport or framework
+type = forbidden
+source_modules =
+    arb_mcp.application
+forbidden_modules =
+    fastapi
+    starlette
+    pydantic
+    uvicorn
+    mcp
+    jwt

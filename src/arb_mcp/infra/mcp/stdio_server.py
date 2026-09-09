@@ -17,7 +17,9 @@ from ...application.build_model import C4_SPEC, build_model
 from ...application.check_catalog import check_catalog as _check_catalog
 from ...application.convert_model import FORMATS, convert_source
 from ...application.validate_model import validate_source
+from ...domain import loading
 from ...domain.loading import SCHEMA, ModelError
+from ..leanix import from_env
 
 mcp = MCPServer("arb-mcp")
 
@@ -102,8 +104,6 @@ def check_catalog(source: str) -> str:
     Informational only — it never blocks a merge. Needs LEANIX_BASE_URL and
     LEANIX_API_TOKEN in the environment.
     """
-    from ...domain import loading
-    from ...infra.leanix import from_env
     try:
         model = loading.load(source)
         report = _check_catalog(model, from_env())

@@ -25,6 +25,7 @@ import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from http import HTTPStatus
 from typing import Any
 
 from fastapi import FastAPI, Request, Response
@@ -86,7 +87,7 @@ class _Guard(BaseHTTPMiddleware):
     def _rejected(exc: AuthError) -> Response:
         # 401 = not authenticated, 403 = authenticated but not allowed. The detail
         # names the reason in words and never echoes the token.
-        kind = "unauthorized" if exc.status == 401 else "forbidden"
+        kind = "unauthorized" if exc.status == HTTPStatus.UNAUTHORIZED else "forbidden"
         return JSONResponse({"error": kind, "detail": exc.detail}, exc.status)
 
     async def dispatch(

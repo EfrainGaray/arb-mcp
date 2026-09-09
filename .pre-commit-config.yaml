@@ -7,7 +7,7 @@
 # message must be a conventional commit. A commit that would break a gate does
 # not happen.
 #
-# The three quality gates are `local` hooks on purpose: they run the SAME pinned
+# The five quality gates are `local` hooks on purpose: they run the SAME pinned
 # tools from the project's venv that CI and a developer run by hand, so the hook
 # can never disagree with `pytest` / `ruff check` / `mypy` typed at the prompt.
 repos:
@@ -45,8 +45,20 @@ repos:
         pass_filenames: false
         types: [python]
       - id: pytest
-        name: pytest
+        name: pytest (coverage gate in pyproject)
         entry: python -m pytest -q
         language: system
         pass_filenames: false
         always_run: true
+      - id: import-linter
+        name: import-linter (domain <- application <- infra)
+        entry: lint-imports
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: deptry
+        name: deptry (undeclared / unused dependencies)
+        entry: deptry src/
+        language: system
+        pass_filenames: false
+        types: [python]

@@ -24,7 +24,9 @@ from .auth import from_env
 
 
 def main() -> None:
-    import uvicorn
+    # Lazy on purpose: uvicorn belongs to the optional [http] extra, and this
+    # module is imported by the stdio server's package too.
+    import uvicorn  # noqa: PLC0415
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     app = create_app(auth=from_env())
