@@ -2,7 +2,6 @@
 
 Proves agnosticism end to end — one schema serves C4 and UML — and that the
 drawio exporter switches stencils by reading the spec, not a flag."""
-import json
 from pathlib import Path
 from xml.etree import ElementTree as ET
 

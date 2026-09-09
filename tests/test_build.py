@@ -50,6 +50,7 @@ def test_include_implied_adds_derived_relations_to_validation():
 
 def test_describe_contract_returns_spec_and_schema():
     import json
+
     from arb_mcp.infra.mcp.stdio_server import describe_contract
     out = json.loads(describe_contract())
     assert out["spec"]["nodeTypes"]

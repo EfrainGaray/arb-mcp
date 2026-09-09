@@ -1,9 +1,7 @@
 """Regressions for Fable's integral audit (A1–A4). Each fails before its fix."""
-import json
 from xml.etree import ElementTree as ET
 
 from arb_mcp.application.convert_model import convert_model, drawio_views
-from arb_mcp.application.validate_model import validate_model
 from arb_mcp.domain.loading import load
 
 C4_SPEC = {"nodeTypes": {"person": {"contains": []},
