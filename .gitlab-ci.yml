@@ -1,0 +1,17 @@
+# Thin on purpose: every gate lives in the Makefile so GitHub runs the same thing.
+stages: [gates]
+
+.gates:
+  stage: gates
+  before_script:
+    - make install
+  script:
+    - make ci
+
+gates-3.11:
+  extends: .gates
+  image: python:3.11-slim
+
+gates-3.13:
+  extends: .gates
+  image: python:3.13-slim
