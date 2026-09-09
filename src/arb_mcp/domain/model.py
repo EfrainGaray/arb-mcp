@@ -25,6 +25,13 @@ Json = dict[str, Any]
 _EMPTY: Mapping[str, Any] = MappingProxyType({})
 
 
+def _empty() -> Mapping[str, Any]:
+    # A dataclass default must be a factory here: Python 3.11 rejects a
+    # mappingproxy as a plain default (3.12 relaxed it), and the CI on 3.11 is
+    # what caught it.
+    return _EMPTY
+
+
 def _strs(value: Any) -> tuple[str, ...]:
     return tuple(str(x) for x in (value or ()))
 
@@ -103,7 +110,7 @@ class RelationType:
 @dataclass(frozen=True, slots=True)
 class Spec:
     node_types: Mapping[str, NodeType]
-    relation_types: Mapping[str, RelationType] = _EMPTY
+    relation_types: Mapping[str, RelationType] = field(default_factory=_empty)
     extends: str = ""
 
     @classmethod
@@ -171,10 +178,10 @@ class Node:
     description: str = ""
     technology: str = ""
     tags: tuple[str, ...] = ()
-    properties: Mapping[str, str] = _EMPTY
+    properties: Mapping[str, str] = field(default_factory=_empty)
     nodes: tuple[Node, ...] = ()
     docs: tuple[Doc, ...] = ()
-    origin: Mapping[str, str] = _EMPTY
+    origin: Mapping[str, str] = field(default_factory=_empty)
 
     @classmethod
     def from_dict(cls, d: Mapping[str, Any]) -> Node:
@@ -222,9 +229,9 @@ class Relation:
     description: str = ""
     technology: str = ""
     tags: tuple[str, ...] = ()
-    properties: Mapping[str, str] = _EMPTY
+    properties: Mapping[str, str] = field(default_factory=_empty)
     id: str = ""
-    origin: Mapping[str, str] = _EMPTY
+    origin: Mapping[str, str] = field(default_factory=_empty)
 
     @classmethod
     def from_dict(cls, d: Mapping[str, Any]) -> Relation:
