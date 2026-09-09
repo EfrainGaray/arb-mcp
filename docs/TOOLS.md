@@ -137,6 +137,8 @@ chosen by configuration — never both, never neither:
   constant time; `caller` is a hash prefix of it.
 
 This adapter only *verifies*; it issues nothing. Swapping the IdP is configuration.
+Full detail — verification order, every variable, status codes, the audit line, the
+IdP recipe and what is not implemented — in [AUTH.md](AUTH.md).
 
 **Audit.** One JSON line per request on the `arb_mcp.audit` logger — method, path,
 status, milliseconds, and `caller` (a 12-hex prefix of the token's SHA-256, enough

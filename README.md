@@ -59,7 +59,7 @@ needed — the host provides the intelligence.
 
 ## API reference
 
-Every tool call and response, captured from the running server: [docs/API.md](docs/API.md). Regenerate with `python docs/gen_api.py` (from an active venv).
+Every tool call and response, captured from the running server: [docs/API.md](docs/API.md). Tool reference: [docs/TOOLS.md](docs/TOOLS.md). Authentication modes and configuration: [docs/AUTH.md](docs/AUTH.md). Regenerate with `python docs/gen_api.py` (from an active venv).
 
 ## The same canonical model, another notation
 
