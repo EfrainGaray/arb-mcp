@@ -24,7 +24,7 @@ validation path by construction.
 ## The tools (how Kiro uses it)
 
 **This MCP has no LLM and calls none.** Kiro does the thinking — it reads the
-epic, drafts the C4 elements — and drives these deterministic tools. Four tools:
+epic, drafts the C4 elements — and drives these deterministic tools. Five tools:
 
 | Kiro wants to… | Tool | Call |
 |---|---|---|

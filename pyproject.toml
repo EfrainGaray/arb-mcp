@@ -1,7 +1,7 @@
 [project]
 name = "arb-mcp"
 version = "0.1.0"
-description = "Architecture Review Board MCP: deterministic C4/DSL validation, conversion and query — the engine of a Kiro Power."
+description = "Architecture Review Board MCP: deterministic C4/DSL validation, conversion and catalog reconciliation — the engine of a Kiro Power."
 requires-python = ">=3.11"
 dependencies = [
     "mcp>=2.0",

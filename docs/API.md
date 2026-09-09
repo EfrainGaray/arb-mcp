@@ -10,6 +10,7 @@ Transport: stdio. A host (Kiro) calls a tool by name with a JSON arguments objec
 - **`build_model_tool`** — Assemble a canonical model from drafted C4 elements and validate it.
 - **`validate_model`** — Validate a design and report whether it may merge.
 - **`convert_model`** — Export a design to another surface. ``to`` is one of: drawio, structurizr.
+- **`check_catalog`** — Reconcile a design against the architecture catalog (LeanIX, the source of
 
 ---
 
@@ -299,5 +300,55 @@ workspace "Billing" {
     "drawio",
     "structurizr"
   ]
+}
+```
+
+---
+
+## `check_catalog`
+
+Reconciles the design against the architecture catalog (LeanIX, the source of truth): which components already exist (with their catalog id) and which are new. Informational — it never blocks. Needs `LEANIX_BASE_URL` and `LEANIX_API_TOKEN`.
+
+**Request**
+```json
+{
+  "name": "check_catalog",
+  "arguments": {
+    "source": "<model or DSL>"
+  }
+}
+```
+
+**Response when the catalog is configured** (shape; captured with a test double)
+```json
+{
+  "ok": true,
+  "checked": 2,
+  "known": [
+    {
+      "id": "api",
+      "name": "API",
+      "type": "container",
+      "catalog_id": "…",
+      "catalog_name": "API"
+    }
+  ],
+  "unknown": [
+    {
+      "id": "bill",
+      "name": "Billing",
+      "type": "softwareSystem"
+    }
+  ],
+  "coverage": 0.5
+}
+```
+
+**Response when the catalog is not reachable** (captured live, no credentials set)
+```json
+{
+  "ok": false,
+  "error": "catalog_unavailable",
+  "detail": "catalog check needs LEANIX_BASE_URL and LEANIX_API_TOKEN in the environment"
 }
 ```

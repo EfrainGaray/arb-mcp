@@ -1,9 +1,13 @@
-import asyncio, json, textwrap
+import asyncio, json, sys, textwrap
 from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 OUT = Path("docs/API.md")
+# The interpreter running this script, not a bare "python": on a machine where
+# only the venv has the mcp package, "python" is not on PATH and the server never
+# starts — which is how API.md silently stayed stale (audit M2).
+PYTHON = sys.executable
 
 def block(obj, limit=None):
     txt = obj if isinstance(obj, str) else json.dumps(obj, ensure_ascii=False, indent=2)
@@ -16,7 +20,7 @@ async def call(s, name, args):
     return res.content[0].text
 
 async def main():
-    p = StdioServerParameters(command="python",
+    p = StdioServerParameters(command=PYTHON,
         args=["-m", "arb_mcp.infra.mcp.stdio_server"], env={"PYTHONPATH": "src"})
     md = []
     md.append("# arb-mcp — API\n")
@@ -32,7 +36,9 @@ async def main():
             await s.initialize()
             tools = {t.name: t for t in (await s.list_tools()).tools}
             md.append("## Tools\n")
-            for n in ["describe_contract", "build_model_tool", "validate_model", "convert_model"]:
+            # Iterate what the server actually registers. A hard-coded list here is
+            # how check_catalog went undocumented for a week (audit M2).
+            for n in tools:
                 md.append(f"- **`{n}`** — {tools[n].description.strip().splitlines()[0]}")
             md.append("")
 
@@ -102,6 +108,25 @@ async def main():
             md.append("**Response** (raw Structurizr DSL)\n```\n" + block(st, 700) + "\n```\n")
             md.append("**Response when `to` is unknown**\n```json\n" +
                       block(json.loads(await call(s, "convert_model", {"source": model_json, "to": "png"}))) + "\n```\n")
+
+            # 5. check_catalog (captured without LeanIX credentials on purpose: the
+            # unavailable shape is what a host sees in every environment but prod)
+            md.append("---\n\n## `check_catalog`\n")
+            md.append("Reconciles the design against the architecture catalog (LeanIX, "
+                      "the source of truth): which components already exist (with their "
+                      "catalog id) and which are new. Informational — it never blocks. "
+                      "Needs `LEANIX_BASE_URL` and `LEANIX_API_TOKEN`.\n")
+            md.append("**Request**\n```json\n" +
+                      block({"name": "check_catalog", "arguments": {"source": "<model or DSL>"}}) +
+                      "\n```\n")
+            md.append("**Response when the catalog is configured** (shape; captured with a test double)\n```json\n" +
+                      block({"ok": True, "checked": 2,
+                             "known": [{"id": "api", "name": "API", "type": "container",
+                                        "catalog_id": "…", "catalog_name": "API"}],
+                             "unknown": [{"id": "bill", "name": "Billing", "type": "softwareSystem"}],
+                             "coverage": 0.5}) + "\n```\n")
+            md.append("**Response when the catalog is not reachable** (captured live, no credentials set)\n```json\n" +
+                      block(json.loads(await call(s, "check_catalog", {"source": model_json}))) + "\n```\n")
 
     OUT.write_text("\n".join(md), "utf-8")
     print("escrito:", OUT, OUT.stat().st_size, "bytes")
