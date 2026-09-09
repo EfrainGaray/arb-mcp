@@ -1,4 +1,4 @@
-"""The deterministic linter, as a typed facade over the ported ``inspections``.
+"""The deterministic linter: the integrity rules plus the spec-driven ``inspections``.
 
 This is the only thing in the whole system allowed to block a merge. It is a
 pure function of the model: same model in, same findings out, no clock, no
@@ -7,7 +7,7 @@ network, no model weights.
 
 from __future__ import annotations
 
-from ._engine import implied, inspections
+from . import implied, inspections
 from .findings import Finding, Severity
 from .model import Model
 
@@ -80,12 +80,6 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                     )
                 )
 
-    # The vendored engine still reads the wire form; it is fed through to_dict()
-    # here and nowhere else.
-    subject = model.to_dict()
-    if include_implied:
-        subject, _ = implied.derive(subject)
-    findings += [
-        Finding(Severity(sev), rule, message) for sev, rule, message in inspections.inspect(subject)
-    ]
+    subject = implied.derive(model)[0] if include_implied else model
+    findings += inspections.inspect(subject)
     return findings

@@ -31,7 +31,6 @@ packages = ["src/arb_mcp"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["src/arb_mcp/domain/_engine"]
 [tool.ruff.lint]
 # Correctness, imports, modernisation, bugbear, simplification — plus what a bank
 # reviewer asks for: S (bandit security), ARG/ERA/T20 (dead or debugging code),
@@ -51,12 +50,6 @@ ignore = ["PLR0913", "PLR0917"]
 python_version = "3.11"
 strict = true
 files = ["src/arb_mcp", "tests"]
-exclude = ["src/arb_mcp/domain/_engine/"]
-
-[[tool.mypy.overrides]]
-module = "arb_mcp.domain._engine.*"
-ignore_errors = true
-follow_imports = "skip"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -64,7 +57,7 @@ testpaths = ["tests"]
 # Coverage on every run, branch-aware, and the missing lines named: a number
 # without the lines behind it is not actionable. The threshold is a RATCHET set to
 # the measured floor, not a round number picked in advance; it only moves up.
-addopts = "--cov=arb_mcp --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=92"
+addopts = "--cov=arb_mcp --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=94"
 
 [tool.coverage.run]
 source = ["arb_mcp"]
@@ -72,7 +65,6 @@ branch = true
 # The vendored engine is measured but not gated on: it is ported code, bit-for-bit
 # equivalent to Structurizr on the measured corpus and exempt from ruff/mypy for the
 # same reason (CLAUDE.md). Gating on it would either freeze it or invite rewrites.
-omit = ["*/domain/_engine/*"]
 
 [tool.coverage.report]
 show_missing = true

@@ -1,6 +1,6 @@
 """Export a canonical model to Structurizr DSL.
 
-The inverse of ``_engine/from_structurizr``: canonical model out to the text
+The inverse of ``structurizr_dsl``: canonical model out to the text
 surface the bank already writes today. One exporter among several — same model
 the linter validated, so the DSL and its verdict cannot drift.
 

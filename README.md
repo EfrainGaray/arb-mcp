@@ -13,8 +13,9 @@ validation path by construction.
 - `domain/` — the typed canonical model (`model.py`: frozen `Model`, `Node`,
   `Relation`, `Spec`, mirrors of the normative JSON Schema), the loader that
   holds any input to the schema, the linter, and the exporters (drawio,
-  Structurizr). The vendored inspections engine sits behind `linter.py` and is
-  fed the wire form at that one boundary.
+  Structurizr), the spec-driven `inspections`, the `implied` relations
+  transformation and the Structurizr DSL parser — all typed, all under the
+  same ruff/mypy/coverage gates. Nothing is vendored or exempt any more.
 - `application/` — use cases and ports.
 - `infra/` — transport adapters: stdio for the architect, HTTP (FastAPI) for CI and demos, authenticated against the organisation's identity provider (OIDC/JWT) or a static token for local work.
 

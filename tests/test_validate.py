@@ -9,8 +9,9 @@ from typing import Any
 import pytest
 
 from arb_mcp.application.validate_model import validate_source
-from arb_mcp.domain._engine import inspections
+from arb_mcp.domain import inspections
 from arb_mcp.domain.loading import ModelError, load
+from arb_mcp.domain.model import Model
 
 FIX = Path(__file__).parent / "fixtures"
 AGATHA = (FIX / "agatha.json").read_text("utf-8")
@@ -23,11 +24,10 @@ def test_load_agatha_is_schema_valid() -> None:
 
 
 def test_use_case_matches_ported_engine() -> None:
-    """The typed facade must not change a single verdict of the raw engine."""
-    raw = inspections.inspect(json.loads(AGATHA))  # (severity, rule, message) tuples
+    """The linter facade adds its integrity rules and otherwise changes no verdict."""
+    raw = inspections.inspect(Model.from_dict(json.loads(AGATHA)))
     report = validate_source(AGATHA)
-    got = [(f.severity.value, f.rule, f.message) for f in report.findings]
-    assert got == raw
+    assert report.findings[-len(raw) :] == raw
 
 
 def test_agatha_has_blocking_findings() -> None:

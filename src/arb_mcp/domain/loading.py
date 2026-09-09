@@ -18,11 +18,11 @@ from typing import Any
 
 import jsonschema
 
-from ._engine import from_structurizr
+from . import structurizr_dsl
 from .model import Model
 
 SCHEMA: dict[str, Any] = json.loads(
-    (files("arb_mcp.domain._engine.schema") / "architecture.schema.json").read_text("utf-8")
+    (files("arb_mcp.domain.schema") / "architecture.schema.json").read_text("utf-8")
 )
 
 
@@ -51,7 +51,7 @@ def load(text: str) -> Model:
         if _looks_like_json(text):
             raw = json.loads(text)
         elif _looks_like_structurizr(text):
-            raw, _lost = from_structurizr.convert(text)
+            raw, _lost = structurizr_dsl.convert(text)
         else:
             raise ModelError(
                 "unrecognized source: expected canonical JSON ('{') "

@@ -1,0 +1,809 @@
+{
+ "agatha.json": {
+  "raw": [
+   [
+    "ERROR",
+    "model.softwareSystem.documentation",
+    "The softwareSystem \"Agatha\" holds 5 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.container.documentation",
+    "The container \"Agatha.Núcleo hexagonal\" holds 7 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.softwareSystem.decisions",
+    "The softwareSystem \"Agatha\" holds elements inside, but no decision backs it."
+   ],
+   [
+    "ERROR",
+    "model.container.decisions",
+    "The container \"Agatha.Núcleo hexagonal\" holds elements inside, but no decision backs it."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Servicio de aplicación\" and \"Agatha.Núcleo hexagonal.Chunker\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Chunker\" and \"Agatha.Núcleo hexagonal.Códec BCH\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Códec BCH\" and \"Agatha.Núcleo hexagonal.Bitmap 4K\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Bitmap 4K\" and \"Agatha.Núcleo hexagonal.Códec de video\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Códec de video\" and \"Agatha.Núcleo hexagonal.Puerto de canal\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Servicio de aplicación\" and \"Agatha.Núcleo hexagonal.Verificador\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.API del demo\" and \"Agatha.Núcleo hexagonal.Servicio de aplicación\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.CLI\" and \"Agatha.Núcleo hexagonal.Servicio de aplicación\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.scope",
+    "The model does not declare its scope. \"landscape\" or \"system\" is recommended."
+   ]
+  ],
+  "implied": [
+   [
+    "ERROR",
+    "model.softwareSystem.documentation",
+    "The softwareSystem \"Agatha\" holds 5 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.container.documentation",
+    "The container \"Agatha.Núcleo hexagonal\" holds 7 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.softwareSystem.decisions",
+    "The softwareSystem \"Agatha\" holds elements inside, but no decision backs it."
+   ],
+   [
+    "ERROR",
+    "model.container.decisions",
+    "The container \"Agatha.Núcleo hexagonal\" holds elements inside, but no decision backs it."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Servicio de aplicación\" and \"Agatha.Núcleo hexagonal.Chunker\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Chunker\" and \"Agatha.Núcleo hexagonal.Códec BCH\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Códec BCH\" and \"Agatha.Núcleo hexagonal.Bitmap 4K\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Bitmap 4K\" and \"Agatha.Núcleo hexagonal.Códec de video\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Códec de video\" and \"Agatha.Núcleo hexagonal.Puerto de canal\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.Núcleo hexagonal.Servicio de aplicación\" and \"Agatha.Núcleo hexagonal.Verificador\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.API del demo\" and \"Agatha.Núcleo hexagonal.Servicio de aplicación\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Agatha.CLI\" and \"Agatha.Núcleo hexagonal.Servicio de aplicación\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.scope",
+    "The model does not declare its scope. \"landscape\" or \"system\" is recommended."
+   ]
+  ],
+  "implied_relations": [
+   {
+    "from": "servicio",
+    "to": "chunker",
+    "type": "uses",
+    "description": "Parte el archivo"
+   },
+   {
+    "from": "chunker",
+    "to": "bch",
+    "type": "uses",
+    "description": "Protege cada bloque"
+   },
+   {
+    "from": "bch",
+    "to": "bitmap",
+    "type": "uses",
+    "description": "Bits protegidos"
+   },
+   {
+    "from": "bitmap",
+    "to": "codec",
+    "type": "uses",
+    "description": "Frames"
+   },
+   {
+    "from": "codec",
+    "to": "canal",
+    "type": "uses",
+    "description": "Bundle listo"
+   },
+   {
+    "from": "servicio",
+    "to": "verificador",
+    "type": "uses",
+    "description": "Valida la reconstrucción"
+   },
+   {
+    "from": "usuario",
+    "to": "api",
+    "type": "uses",
+    "description": "Sube un archivo y su correo",
+    "technology": "HTTPS"
+   },
+   {
+    "from": "api",
+    "to": "escaner",
+    "type": "uses",
+    "description": "Delega el análisis",
+    "technology": "docker run --network none"
+   },
+   {
+    "from": "api",
+    "to": "servicio",
+    "type": "uses",
+    "description": "Codifica y reconstruye"
+   },
+   {
+    "from": "cli",
+    "to": "servicio",
+    "type": "uses",
+    "description": "Invoca las mismas etapas"
+   },
+   {
+    "from": "servicio",
+    "to": "almacen",
+    "type": "uses",
+    "description": "Guarda el manifiesto y el SHA",
+    "technology": "SQL"
+   },
+   {
+    "from": "canal",
+    "to": "youtube",
+    "type": "uses",
+    "description": "Sube el video (unlisted) y lo recupera",
+    "technology": "OAuth · yt-dlp"
+   },
+   {
+    "from": "api",
+    "to": "correo",
+    "type": "uses",
+    "description": "Envía la URL de descarga",
+    "technology": "SMTP"
+   },
+   {
+    "from": "usuario",
+    "to": "agatha",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "Sube un archivo y su correo",
+    "technology": "HTTPS"
+   },
+   {
+    "from": "api",
+    "to": "core",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "Codifica y reconstruye"
+   },
+   {
+    "from": "cli",
+    "to": "core",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "Invoca las mismas etapas"
+   },
+   {
+    "from": "core",
+    "to": "almacen",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "Guarda el manifiesto y el SHA",
+    "technology": "SQL"
+   },
+   {
+    "from": "core",
+    "to": "youtube",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "Sube el video (unlisted) y lo recupera",
+    "technology": "OAuth · yt-dlp"
+   },
+   {
+    "from": "agatha",
+    "to": "youtube",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "Sube el video (unlisted) y lo recupera",
+    "technology": "OAuth · yt-dlp"
+   },
+   {
+    "from": "agatha",
+    "to": "correo",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "Envía la URL de descarga",
+    "technology": "SMTP"
+   }
+  ]
+ },
+ "despliegue.json": {
+  "raw": [
+   [
+    "ERROR",
+    "model.deploymentNode.documentation",
+    "The deploymentNode \"Amazon Web Services\" holds 1 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.deploymentNode.documentation",
+    "The deploymentNode \"Amazon Web Services.eu-west-1\" holds 3 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.deploymentNode.documentation",
+    "The deploymentNode \"Amazon Web Services.eu-west-1.ECS Cluster\" holds 1 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.deploymentNode.documentation",
+    "The deploymentNode \"Amazon Web Services.eu-west-1.RDS\" holds 1 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Amazon Web Services.eu-west-1.Load Balancer\" and \"Amazon Web Services.eu-west-1.ECS Cluster.API\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Amazon Web Services.eu-west-1.ECS Cluster.API\" and \"Amazon Web Services.eu-west-1.RDS.Ledger DB\" declares no technology."
+   ],
+   [
+    "WARNING",
+    "model.deploymentNode.description",
+    "The deploymentNode \"Amazon Web Services\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.deploymentNode.description",
+    "The deploymentNode \"Amazon Web Services.eu-west-1\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.infrastructureNode.description",
+    "The infrastructureNode \"Amazon Web Services.eu-west-1.Load Balancer\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.deploymentNode.description",
+    "The deploymentNode \"Amazon Web Services.eu-west-1.ECS Cluster\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.containerInstance.description",
+    "The containerInstance \"Amazon Web Services.eu-west-1.ECS Cluster.API\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.deploymentNode.description",
+    "The deploymentNode \"Amazon Web Services.eu-west-1.RDS\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.containerInstance.description",
+    "The containerInstance \"Amazon Web Services.eu-west-1.RDS.Ledger DB\" has no description."
+   ]
+  ],
+  "implied": [
+   [
+    "ERROR",
+    "model.deploymentNode.documentation",
+    "The deploymentNode \"Amazon Web Services\" holds 1 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.deploymentNode.documentation",
+    "The deploymentNode \"Amazon Web Services.eu-west-1\" holds 3 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.deploymentNode.documentation",
+    "The deploymentNode \"Amazon Web Services.eu-west-1.ECS Cluster\" holds 1 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.deploymentNode.documentation",
+    "The deploymentNode \"Amazon Web Services.eu-west-1.RDS\" holds 1 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Amazon Web Services.eu-west-1.Load Balancer\" and \"Amazon Web Services.eu-west-1.ECS Cluster.API\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Amazon Web Services.eu-west-1.ECS Cluster.API\" and \"Amazon Web Services.eu-west-1.RDS.Ledger DB\" declares no technology."
+   ],
+   [
+    "WARNING",
+    "model.deploymentNode.description",
+    "The deploymentNode \"Amazon Web Services\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.deploymentNode.description",
+    "The deploymentNode \"Amazon Web Services.eu-west-1\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.infrastructureNode.description",
+    "The infrastructureNode \"Amazon Web Services.eu-west-1.Load Balancer\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.deploymentNode.description",
+    "The deploymentNode \"Amazon Web Services.eu-west-1.ECS Cluster\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.containerInstance.description",
+    "The containerInstance \"Amazon Web Services.eu-west-1.ECS Cluster.API\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.deploymentNode.description",
+    "The deploymentNode \"Amazon Web Services.eu-west-1.RDS\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.containerInstance.description",
+    "The containerInstance \"Amazon Web Services.eu-west-1.RDS.Ledger DB\" has no description."
+   ]
+  ],
+  "implied_relations": [
+   {
+    "from": "alb",
+    "to": "api",
+    "type": "route",
+    "description": "HTTPS"
+   },
+   {
+    "from": "api",
+    "to": "db",
+    "type": "uses",
+    "description": "SQL"
+   },
+   {
+    "from": "alb",
+    "to": "ecs",
+    "tags": [
+     "implied"
+    ],
+    "type": "route",
+    "description": "HTTPS"
+   },
+   {
+    "from": "api",
+    "to": "rds",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "SQL"
+   },
+   {
+    "from": "ecs",
+    "to": "db",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "SQL"
+   },
+   {
+    "from": "ecs",
+    "to": "rds",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "SQL"
+   }
+  ]
+ },
+ "uml-casos-uso.json": {
+  "raw": [
+   [
+    "ERROR",
+    "model.system.documentation",
+    "The system \"Cajero automático\" holds 3 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cliente\" and \"Cajero automático.Retirar efectivo\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cliente\" and \"Cajero automático.Consultar saldo\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cajero\" and \"Cajero automático.Retirar efectivo\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cajero automático.Retirar efectivo\" and \"Cajero automático.Autenticar\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cajero automático.Consultar saldo\" and \"Cajero automático.Autenticar\" declares no technology."
+   ],
+   [
+    "WARNING",
+    "model.actor.description",
+    "The actor \"Cliente\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.actor.description",
+    "The actor \"Cajero\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.system.description",
+    "The system \"Cajero automático\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.useCase.description",
+    "The useCase \"Cajero automático.Retirar efectivo\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.useCase.description",
+    "The useCase \"Cajero automático.Consultar saldo\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.useCase.description",
+    "The useCase \"Cajero automático.Autenticar\" has no description."
+   ],
+   [
+    "ERROR",
+    "model.scope",
+    "The model does not declare its scope. \"landscape\" or \"system\" is recommended."
+   ]
+  ],
+  "implied": [
+   [
+    "ERROR",
+    "model.system.documentation",
+    "The system \"Cajero automático\" holds 3 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cliente\" and \"Cajero automático.Retirar efectivo\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cliente\" and \"Cajero automático.Consultar saldo\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cajero\" and \"Cajero automático.Retirar efectivo\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cajero automático.Retirar efectivo\" and \"Cajero automático.Autenticar\" declares no technology."
+   ],
+   [
+    "ERROR",
+    "model.relation.technology",
+    "The relation between \"Cajero automático.Consultar saldo\" and \"Cajero automático.Autenticar\" declares no technology."
+   ],
+   [
+    "WARNING",
+    "model.actor.description",
+    "The actor \"Cliente\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.actor.description",
+    "The actor \"Cajero\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.system.description",
+    "The system \"Cajero automático\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.useCase.description",
+    "The useCase \"Cajero automático.Retirar efectivo\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.useCase.description",
+    "The useCase \"Cajero automático.Consultar saldo\" has no description."
+   ],
+   [
+    "WARNING",
+    "model.useCase.description",
+    "The useCase \"Cajero automático.Autenticar\" has no description."
+   ],
+   [
+    "ERROR",
+    "model.scope",
+    "The model does not declare its scope. \"landscape\" or \"system\" is recommended."
+   ]
+  ],
+  "implied_relations": [
+   {
+    "from": "cliente",
+    "to": "retirar",
+    "type": "association"
+   },
+   {
+    "from": "cliente",
+    "to": "consultar",
+    "type": "association"
+   },
+   {
+    "from": "cajero",
+    "to": "retirar",
+    "type": "association"
+   },
+   {
+    "from": "retirar",
+    "to": "autenticar",
+    "type": "include",
+    "description": "include"
+   },
+   {
+    "from": "consultar",
+    "to": "autenticar",
+    "type": "include",
+    "description": "include"
+   },
+   {
+    "from": "cliente",
+    "to": "atm",
+    "tags": [
+     "implied"
+    ],
+    "type": "association"
+   },
+   {
+    "from": "cajero",
+    "to": "atm",
+    "tags": [
+     "implied"
+    ],
+    "type": "association"
+   }
+  ]
+ },
+ "simple.dsl": {
+  "model": {
+   "version": "1.0",
+   "name": "Simple",
+   "description": "A minimal Structurizr workspace",
+   "spec": {
+    "nodeTypes": {
+     "person": {
+      "description": "A user of the system",
+      "contains": []
+     },
+     "softwareSystem": {
+      "description": "A software system",
+      "contains": [
+       "container"
+      ]
+     },
+     "container": {
+      "description": "Something deployable",
+      "contains": [
+       "component"
+      ]
+     },
+     "component": {
+      "description": "A part inside a container",
+      "contains": []
+     },
+     "deploymentNode": {
+      "description": "Where something runs"
+     },
+     "infrastructureNode": {
+      "description": "Load balancer, firewall, DNS",
+      "contains": []
+     },
+     "decision": {
+      "description": "Decision record",
+      "requires": [
+       "status"
+      ],
+      "contains": []
+     }
+    },
+    "relationTypes": {
+     "uses": {},
+     "affects": {
+      "description": "Ties a decision to what it decides",
+      "from": [
+       "decision"
+      ]
+     }
+    }
+   },
+   "nodes": [
+    {
+     "id": "user",
+     "type": "person",
+     "name": "User",
+     "description": "An end user"
+    },
+    {
+     "id": "sys",
+     "type": "softwareSystem",
+     "name": "System",
+     "description": "The system",
+     "nodes": [
+      {
+       "id": "web",
+       "type": "container",
+       "name": "Web App",
+       "description": "Serves the UI",
+       "technology": "TypeScript"
+      }
+     ]
+    }
+   ],
+   "relations": [
+    {
+     "from": "user",
+     "to": "web",
+     "type": "uses",
+     "description": "Uses",
+     "technology": "HTTPS"
+    }
+   ],
+   "views": [
+    {
+     "id": "sys",
+     "title": "sys",
+     "include": [
+      {
+       "inside": "sys"
+      }
+     ]
+    }
+   ]
+  },
+  "lost": [],
+  "raw": [
+   [
+    "ERROR",
+    "model.softwareSystem.documentation",
+    "The softwareSystem \"System\" holds 1 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.softwareSystem.decisions",
+    "The softwareSystem \"System\" holds elements inside, but no decision backs it."
+   ],
+   [
+    "ERROR",
+    "model.scope",
+    "The model does not declare its scope. \"landscape\" or \"system\" is recommended."
+   ]
+  ],
+  "implied": [
+   [
+    "ERROR",
+    "model.softwareSystem.documentation",
+    "The softwareSystem \"System\" holds 1 elements inside, but is not documented."
+   ],
+   [
+    "ERROR",
+    "model.softwareSystem.decisions",
+    "The softwareSystem \"System\" holds elements inside, but no decision backs it."
+   ],
+   [
+    "ERROR",
+    "model.scope",
+    "The model does not declare its scope. \"landscape\" or \"system\" is recommended."
+   ]
+  ],
+  "implied_relations": [
+   {
+    "from": "user",
+    "to": "web",
+    "type": "uses",
+    "description": "Uses",
+    "technology": "HTTPS"
+   },
+   {
+    "from": "user",
+    "to": "sys",
+    "tags": [
+     "implied"
+    ],
+    "type": "uses",
+    "description": "Uses",
+    "technology": "HTTPS"
+   }
+  ]
+ }
+}
