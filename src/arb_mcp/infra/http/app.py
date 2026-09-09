@@ -76,35 +76,42 @@ class _Guard(BaseHTTPMiddleware):
     def __init__(self, app: Any, token: str) -> None:
         super().__init__(app)
         self._token = token.encode()
-        # what the audit line names the caller by: a prefix of the token's hash,
-        # enough to tell two tokens apart, never the token itself
-        self._caller = hashlib.sha256(self._token).hexdigest()[:12]
+
+    @staticmethod
+    def _caller_of(given: bytes) -> str:
+        """Who the audit line names: a prefix of the hash of the PRESENTED token.
+
+        Of the presented one, not the configured one — the first deployment logged
+        every request, wrong tokens included, under the legitimate caller's id.
+        Enough to tell two tokens apart; the token itself is never written.
+        """
+        return hashlib.sha256(given).hexdigest()[:12] if given else "anonymous"
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         t0 = time.perf_counter()
-        path = request.url.path
-        if not path.startswith(_OPEN_PATHS):
-            header = request.headers.get("authorization", "")
-            given = header[7:].encode() if header.startswith("Bearer ") else b""
-            if not hmac.compare_digest(given, self._token):
-                response: Response = JSONResponse(
-                    {"error": "unauthorized", "detail": "bearer token required"}, 401
-                )
-                self._log(request, response, t0)
-                return response
+        header = request.headers.get("authorization", "")
+        given = header[7:].encode() if header.startswith("Bearer ") else b""
+        caller = self._caller_of(given)
+        gated = not request.url.path.startswith(_OPEN_PATHS)
+        if gated and not hmac.compare_digest(given, self._token):
+            response: Response = JSONResponse(
+                {"error": "unauthorized", "detail": "bearer token required"}, 401
+            )
+            self._log(request, response, t0, caller)
+            return response
         response = await call_next(request)
-        self._log(request, response, t0)
+        self._log(request, response, t0, caller)
         return response
 
-    def _log(self, request: Request, response: Response, t0: float) -> None:
+    def _log(self, request: Request, response: Response, t0: float, caller: str) -> None:
         _audit.info(json.dumps({
             "method": request.method,
             "path": request.url.path,
             "status": response.status_code,
             "ms": round((time.perf_counter() - t0) * 1000, 1),
-            "caller": self._caller,
+            "caller": caller,
         }))
 
 

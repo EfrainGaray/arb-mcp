@@ -156,3 +156,20 @@ def test_every_call_leaves_one_audit_line_without_the_token(
     entry = json.loads(lines[0])
     assert entry["path"] == "/v1/contract" and entry["status"] == 200
     assert "caller" in entry and TOKEN not in lines[0]     # never log the secret
+
+
+def test_audit_caller_is_who_called_not_who_is_configured(
+    client: TestClient, caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A wrong token must not be logged under the legitimate caller's id.
+
+    Found live on the first deployment: every line carried the same caller, because
+    the id was derived from the server's token instead of the presented one."""
+    with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+        client.get("/v1/contract", headers=AUTH)
+        client.get("/v1/contract", headers={"Authorization": "Bearer nope"})
+        client.get("/v1/contract")
+    entries = [json.loads(r.getMessage()) for r in caplog.records if r.name == "arb_mcp.audit"]
+    assert [e["status"] for e in entries] == [200, 401, 401]
+    assert entries[0]["caller"] != entries[1]["caller"]
+    assert entries[2]["caller"] == "anonymous"

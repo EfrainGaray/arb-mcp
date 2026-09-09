@@ -1,0 +1,52 @@
+# The gates CLAUDE.md demands before a commit, enforced by git itself.
+#
+# This is the Python-native equivalent of husky: the `pre-commit` framework, which
+# needs no Node toolchain in a Python repo. Install once with
+#   pre-commit install --hook-type pre-commit --hook-type commit-msg
+# and every commit runs ruff, mypy --strict and the test suite; every commit
+# message must be a conventional commit. A commit that would break a gate does
+# not happen.
+#
+# The three quality gates are `local` hooks on purpose: they run the SAME pinned
+# tools from the project's venv that CI and a developer run by hand, so the hook
+# can never disagree with `pytest` / `ruff check` / `mypy` typed at the prompt.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key          # rule 3: zero secrets in the repo
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+      - id: conventional-pre-commit     # rule 4: feat/fix/chore/docs/refactor/test/perf
+        stages: [commit-msg]
+        args: [feat, fix, chore, docs, refactor, test, perf]
+
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check src/ tests/
+        entry: ruff check src/ tests/
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: mypy
+        name: mypy --strict
+        entry: mypy
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: pytest
+        name: pytest
+        entry: python -m pytest -q
+        language: system
+        pass_filenames: false
+        always_run: true
