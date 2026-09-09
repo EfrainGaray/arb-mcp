@@ -19,6 +19,16 @@ validation path by construction.
 - `application/` — use cases and ports.
 - `infra/` — transport adapters: stdio for the architect, HTTP (FastAPI) for CI and demos, authenticated against the organisation's identity provider (OIDC/JWT) or a static token for local work.
 
+## Tests, three layers
+
+- `tests/features/*.feature` — the merge gate as Gherkin scenarios the
+  architecture review board can read and sign off; pytest-bdd runs them
+  against the real linter. Only the deterministic gate lives here.
+- `tests/test_properties.py` — hypothesis invariants over generated models:
+  determinism, totality, round-trip, well-formed exports.
+- plain pytest for everything else; `engine_golden.json` pins the verdicts
+  measured against the official Structurizr CLI.
+
 ## Develop
 
     python -m venv .venv && . .venv/bin/activate
