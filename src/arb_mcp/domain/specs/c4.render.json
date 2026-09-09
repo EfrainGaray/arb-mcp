@@ -1,0 +1,19 @@
+{
+  "$comment": "Render profile: how ONE tool paints a model. It is NOT part of the model, and the model never names it -- whoever invokes the exporter chooses it. Two profiles over the same model must validate identically and produce two different drawings; if changing this file altered any model digest, the separation would be fake. Sizes here are drawio's own C4 palette, read from Sidebar-C4.js in jgraph/drawio: 240x120 for system, container and component, 200x180 for a person, all marked resizable=0.",
+  "profile": "c4-drawio",
+  "version": "1.0",
+  "spec": "c4.spec.json",
+  "units": "px",
+  "grid": { "rankGap": 80, "orderGap": 60, "labelRoom": 70 },
+  "nodeTypes": {
+    "person":         { "size": [200, 180], "shape": "mxgraph.c4.person2", "fill": "#083F75", "stroke": "#06315C", "text": "#ffffff" },
+    "softwareSystem": { "size": [240, 120], "shape": "rounded",            "fill": "#1061B0", "stroke": "#0D5091", "text": "#ffffff" },
+    "container":      { "size": [240, 120], "shape": "rounded",            "fill": "#23A2D9", "stroke": "#0E7DAD", "text": "#ffffff" },
+    "component":      { "size": [240, 120], "shape": "rounded",            "fill": "#63BEF2", "stroke": "#2086C9", "text": "#ffffff" },
+    "boundary":       { "size": [240, 210], "shape": "dashed",             "fill": "none",    "stroke": "#666666", "text": "#333333" }
+  },
+  "relationTypes": {
+    "default": { "line": "solid", "arrow": "blockThin", "stroke": "#828282", "routing": "orthogonal" }
+  },
+  "defaults": { "size": [240, 120], "shape": "rounded", "fill": "#1061B0", "stroke": "#0D5091", "text": "#ffffff" }
+}

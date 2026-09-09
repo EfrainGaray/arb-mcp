@@ -1,5 +1,11 @@
 """Export a canonical model to drawio (mxGraph) XML as separate C4 views.
 
+The ONE drawio exporter: geometry comes from the ordinal resolver (``layout``)
+over the view's ``rank``/``order`` cells, sizes and gaps from a ``RenderProfile``
+the caller chooses, styles verbatim from drawio's own C4 palette. Nothing in the
+model is a pixel; two profiles over the same model validate identically and
+draw differently.
+
 C4 is a set of diagrams at rising zoom, not one canvas: a System Context (C1),
 one Container diagram (C2) per software system, and one Component diagram (C3)
 per container. Each is emitted as its OWN standalone ``<mxfile>`` — never tabs
@@ -21,7 +27,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from xml.sax.saxutils import escape, quoteattr
 
-from .model import Model, Node, Relation
+from .layout import Box, Resolved, resolve
+from .model import Layout, Model, Node, Relation
+from .render import RenderProfile
 
 # Verbatim from drawio's mxgraph.c4 stencil (Sidebar-C4.js).
 _STYLE: dict[str, str] = {
@@ -53,8 +61,9 @@ _EXTERNAL = (
 _BOUNDARY = (
     "rounded=1;fontSize=11;whiteSpace=wrap;html=1;dashed=1;arcSize=20;fillColor=none;"
     "strokeColor=#666666;fontColor=#333333;labelBackgroundColor=none;align=left;"
-    "verticalAlign=bottom;dashPattern=8 4;metaEdit=1;perimeter=rectanglePerimeter;"
-    "container=1;collapsible=0;"
+    "verticalAlign=bottom;labelBorderColor=none;spacingTop=0;spacing=10;dashPattern=8 4;"
+    "metaEdit=1;rotatable=0;perimeter=rectanglePerimeter;allowArrows=0;connectable=0;"
+    "expand=0;recursiveResize=0;absoluteArcSize=1;container=1;collapsible=0;"
 )
 _EDGE = (
     "endArrow=blockThin;html=1;fontSize=10;fontColor=#404040;strokeWidth=1;endFill=1;"
@@ -203,21 +212,74 @@ def _edges(pairs: list[tuple[str, str, Relation]]) -> list[str]:
     return [_edge_cell(f":e{i}", _rel_label(rel), a, b) for i, (a, b, rel) in enumerate(pairs)]
 
 
+# ─────────────────────────── placing a view ───────────────────────────
+_VIRTUAL = "_outside"  # an undrawn group: the externals of a C2/C3, stacked beside the focus
+
+
+def _layout_for(model: Model, focus: str | None) -> Layout | None:
+    """The authored layout of the view over ``focus`` (``None`` = the landscape)."""
+    for v in model.views:
+        if v.layout is None:
+            continue
+        for q in v.include:
+            if focus is None and q == "*":
+                return v.layout
+            if isinstance(q, dict) and q.get("inside") == focus:
+                return v.layout
+    return None
+
+
+def _place(boxes: list[Box], layout: Layout | None, profile: RenderProfile) -> Resolved:
+    return resolve(tuple(boxes), layout, profile.grid)
+
+
+def _cell_of(placed: Resolved, node_id: str) -> tuple[int, int, int, int, str]:
+    """x, y, w, h and the drawio parent id of a placed node. A child of the
+    virtual group is lifted onto the canvas by the group's own offset."""
+    p = placed.get(node_id)
+    if p is None:
+        return 0, 0, 0, 0, "1"
+    if p.parent == _VIRTUAL:
+        g = placed.get(_VIRTUAL)
+        gx, gy = (g.x, g.y) if g else (0, 0)
+        return gx + p.x, gy + p.y, p.w, p.h, "1"
+    return p.x, p.y, p.w, p.h, p.parent or "1"
+
+
+def _emit_c4(placed: Resolved, node: Node, style: str, cells: list[str]) -> None:
+    x, y, w, h, parent = _cell_of(placed, node.id)
+    cells.append(_c4_vertex(node, style, x, y, w, h, parent=parent))
+
+
+def _emit_boundary(placed: Resolved, node: Node, cells: list[str]) -> None:
+    x, y, w, h, parent = _cell_of(placed, node.id)
+    cells.append(_vertex(node.id, _label(node), _BOUNDARY, x, y, w, h, parent))
+
+
+def _external_style(node: Node) -> str:
+    if node.type == "person":
+        return _STYLE["person"]
+    if node.type == "container":
+        return _STYLE["container"]
+    return _EXTERNAL
+
+
 # ─────────────────────────── the three levels ───────────────────────────
-def _view_c1(model: Model) -> Diagram:
+def _view_c1(model: Model, profile: RenderProfile) -> Diagram:
     tops = [n for n in model.nodes if n.type in ("person", "softwareSystem")]
     top_ids = {n.id for n in tops}
+    placed = _place(
+        [Box(n.id, None, profile.size_of(n.type)) for n in tops], _layout_for(model, None), profile
+    )
     cells: list[str] = []
-    y = 40
     for n in tops:
-        cells.append(_c4_vertex(n, _STYLE.get(n.type, _EXTERNAL), 40, y, 210, 110))
-        y += 150
+        _emit_c4(placed, n, _STYLE.get(n.type, _EXTERNAL), cells)
 
-    def resolve(nid: str) -> str | None:
+    def resolve_end(nid: str) -> str | None:
         t = model.top_of(nid)
         return t if t in top_ids else None
 
-    cells += _edges(_resolved(model, resolve))
+    cells += _edges(_resolved(model, resolve_end))
     return Diagram(
         level="C1",
         scope="system-landscape",
@@ -240,38 +302,53 @@ def _externals(
     return list(seen.values())
 
 
-def _view_c2(model: Model, system: Node) -> Diagram:
+def _focused(
+    model: Model,
+    profile: RenderProfile,
+    focus: Node,
+    inside: tuple[Node, ...],
+    resolve_end: Callable[[str], str | None],
+) -> tuple[list[str], list[tuple[str, str, Relation]]]:
+    """The shared shape of C2 and C3: a boundary around the focus with its
+    children nested, the externals an edge reaches beside it, the edges."""
+    inside_ids = {c.id for c in inside}
+    pairs = _resolved(model, resolve_end)
+    externals = _externals(model, pairs, focus.id, inside_ids)
+    layout = _layout_for(model, focus.id)
+    boxes = [Box(focus.id, None, profile.boundary_size)]
+    boxes += [Box(c.id, focus.id, profile.size_of(c.type)) for c in inside]
+    if layout is None and externals:
+        # No authored cells: stack the externals in a column beside the boundary,
+        # inside an undrawn group so the resolver keeps them off the boundary's row.
+        boxes.append(Box(_VIRTUAL, None, (0, 0)))
+        boxes += [Box(e.id, _VIRTUAL, profile.size_of(e.type)) for e in externals]
+    else:
+        boxes += [Box(e.id, None, profile.size_of(e.type)) for e in externals]
+    placed = _place(boxes, layout, profile)
+    cells: list[str] = []
+    _emit_boundary(placed, focus, cells)
+    for c in inside:
+        _emit_c4(placed, c, _STYLE[c.type], cells)
+    for e in externals:
+        _emit_c4(placed, e, _external_style(e), cells)
+    cells += _edges(pairs)
+    return cells, pairs
+
+
+def _view_c2(model: Model, system: Node, profile: RenderProfile) -> Diagram:
     sid = system.id
     containers = system.children_of_type("container")
     container_ids = {c.id for c in containers}
-    cells: list[str] = []
-    # boundary of the in-focus system, containers nested inside it
-    ch = 100
-    cells.append(
-        _vertex(sid, _label(system), _BOUNDARY, 200, 40, 320, 60 + len(containers) * (ch + 20))
-    )
-    for i, c in enumerate(containers):
-        cells.append(
-            _c4_vertex(c, _STYLE["container"], 40, 40 + i * (ch + 20), 240, ch, parent=sid)
-        )
 
-    def resolve(nid: str) -> str | None:
+    def resolve_end(nid: str) -> str | None:
         if nid not in model:
             return None  # dangling endpoint: the linter blocks it; never crash here
         inside = model.lift_to(nid, container_ids)
-        if inside is not None:
-            return inside
         # the focus system itself resolves to its boundary, drawn with id=sid;
         # anything else, to its top-level element (an external)
-        return model.top_of(nid)
+        return inside if inside is not None else model.top_of(nid)
 
-    pairs = _resolved(model, resolve)
-    ey = 40
-    for ext in _externals(model, pairs, sid, container_ids):
-        style = _STYLE["person"] if ext.type == "person" else _EXTERNAL
-        cells.append(_c4_vertex(ext, style, 600, ey, 210, 110))
-        ey += 150
-    cells += _edges(pairs)
+    cells, _ = _focused(model, profile, system, containers, resolve_end)
     return Diagram(
         level="C2",
         scope=sid,
@@ -280,21 +357,12 @@ def _view_c2(model: Model, system: Node) -> Diagram:
     )
 
 
-def _view_c3(model: Model, container: Node) -> Diagram:
+def _view_c3(model: Model, container: Node, profile: RenderProfile) -> Diagram:
     cid = container.id
     components = container.children_of_type("component")
     comp_ids = {c.id for c in components}
-    cells: list[str] = []
-    ch = 90
-    cells.append(
-        _vertex(cid, _label(container), _BOUNDARY, 200, 40, 320, 60 + len(components) * (ch + 20))
-    )
-    for i, c in enumerate(components):
-        cells.append(
-            _c4_vertex(c, _STYLE["component"], 40, 40 + i * (ch + 20), 240, ch, parent=cid)
-        )
 
-    def resolve(nid: str) -> str | None:
+    def resolve_end(nid: str) -> str | None:
         if nid not in model:
             return None  # dangling endpoint: the linter blocks it; never crash here
         inside = model.lift_to(nid, comp_ids)
@@ -313,17 +381,7 @@ def _view_c3(model: Model, container: Node) -> Diagram:
             cur = p
         return None
 
-    pairs = _resolved(model, resolve)
-    ey = 40
-    for ext in _externals(model, pairs, cid, comp_ids):
-        style = (
-            _STYLE["person"]
-            if ext.type == "person"
-            else (_STYLE["container"] if ext.type == "container" else _EXTERNAL)
-        )
-        cells.append(_c4_vertex(ext, style, 600, ey, 210, 110))
-        ey += 150
-    cells += _edges(pairs)
+    cells, _ = _focused(model, profile, container, components, resolve_end)
     return Diagram(
         level="C3",
         scope=cid,
@@ -332,24 +390,26 @@ def _view_c3(model: Model, container: Node) -> Diagram:
     )
 
 
-def to_c4_views(model: Model) -> list[Diagram]:
+def to_c4_views(model: Model, profile: RenderProfile | None = None) -> list[Diagram]:
     """Return the C4 views as independent diagrams: one C1, one C2 per system
     with containers, one C3 per container with components. Each carries its own
     standalone ``.drawio`` XML — never tabs in one file."""
-    views: list[Diagram] = [_view_c1(model)]
+    prof = profile or RenderProfile.load("c4")
+    views: list[Diagram] = [_view_c1(model, prof)]
     views.extend(
-        _view_c2(model, n)
+        _view_c2(model, n, prof)
         for n in model.nodes
         if n.type == "softwareSystem" and n.children_of_type("container")
     )
     views.extend(
-        _view_c3(model, n)
+        _view_c3(model, n, prof)
         for n in model.walk()
         if n.type == "container" and n.children_of_type("component")
     )
     return views
 
 
+# ─────────────────────────── any other notation ───────────────────────────
 def _flat_level(model: Model) -> str:
     t = model.spec.node_types
     if "actor" in t or "useCase" in t:
@@ -359,53 +419,23 @@ def _flat_level(model: Model) -> str:
     return "Diagram"
 
 
-_FLAT_PAD, _FLAT_HDR, _FLAT_GAP = 24, 36, 20
-
-
-def _flat_measure(node: Node) -> tuple[int, int]:
-    """Bottom-up size of a node: a leaf is a fixed box; a container grows to fit
-    its stacked children at any depth."""
-    if not node.nodes:
-        return (70, 90) if node.type == "actor" else (200, 80)
-    sizes = [_flat_measure(k) for k in node.nodes]
-    w = max(s[0] for s in sizes) + 2 * _FLAT_PAD
-    h = _FLAT_HDR + sum(s[1] for s in sizes) + _FLAT_GAP * (len(node.nodes) - 1) + _FLAT_PAD
-    return w, h
-
-
-def _view_flat(model: Model) -> Diagram:
+def _view_flat(model: Model, profile: RenderProfile) -> Diagram:
     """A single diagram for any non-C4 notation (UML, deployment, …): every
     element drawn as itself, containers nesting their children to ARBITRARY
     depth, relations as edges. No lifting is lost — every node is emitted."""
+    boxes = [Box(n.id, model.parent_of(n.id), profile.size_of(n.type)) for n in model.walk()]
+    placed = _place(boxes, _layout_for(model, None), profile)
     cells: list[str] = []
-    emitted: set[str] = set()
+    for n in model.walk():
+        x, y, w, h, parent = _cell_of(placed, n.id)
+        style = _UML_BOUNDARY if n.nodes else _UML_STYLE.get(n.type, _UML_FALLBACK)
+        cells.append(_vertex(n.id, _label(n), style, x, y, w, h, parent))
+    emitted = {n.id for n in model.walk()}
 
-    def place(node: Node, x: int, y: int, container: str) -> None:
-        emitted.add(node.id)
-        w, h = _flat_measure(node)
-        if not node.nodes:
-            style = _UML_STYLE.get(node.type, _UML_FALLBACK)
-            cells.append(_vertex(node.id, _label(node), style, x, y, w, h, container))
-            return
-        cells.append(_vertex(node.id, _label(node), _UML_BOUNDARY, x, y, w, h, container))
-        cy = _FLAT_HDR
-        for k in node.nodes:  # children are placed in the container's own coordinates
-            _kw, kh = _flat_measure(k)
-            place(k, _FLAT_PAD, cy, node.id)
-            cy += kh + _FLAT_GAP
-
-    ty = 40
-    for n in model.nodes:
-        _w, h = _flat_measure(n)
-        place(n, 40, ty, "1")
-        ty += h + 50
-
-    # every node is emitted, so an endpoint resolves to itself; a stray deeper id
-    # (none here) would lift to the nearest drawn ancestor
-    def resolve(nid: str) -> str | None:
+    def resolve_end(nid: str) -> str | None:
         return model.lift_to(nid, emitted)
 
-    cells += _edges(_resolved(model, resolve))
+    cells += _edges(_resolved(model, resolve_end))
     level = _flat_level(model)
     return Diagram(
         level=level,
@@ -415,8 +445,11 @@ def _view_flat(model: Model) -> Diagram:
     )
 
 
-def to_views(model: Model) -> list[Diagram]:
+def to_views(model: Model, profile: RenderProfile | None = None) -> list[Diagram]:
     """Dispatch by notation: C4 models get the separate C1/C2/C3 views; any other
     spec (UML use cases, etc.) gets a single flat diagram. Same canonical model,
-    the exporter reads its ``spec`` to decide."""
-    return to_c4_views(model) if model.is_c4 else [_view_flat(model)]
+    the exporter reads its ``spec`` to decide which shipped profile applies when
+    the caller names none."""
+    if model.is_c4:
+        return to_c4_views(model, profile)
+    return [_view_flat(model, profile or RenderProfile.load("generic"))]

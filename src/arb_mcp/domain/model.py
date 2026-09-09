@@ -258,27 +258,92 @@ class Relation:
 
 
 @dataclass(frozen=True, slots=True)
+class Placement:
+    """Where a node sits, as a CELL and not as pixels: ``rank`` is the reading
+    depth and ``order`` the position within it, both relative to the parent."""
+
+    node: str
+    rank: int
+    order: int
+    span: int = 1
+
+    @classmethod
+    def from_dict(cls, d: Mapping[str, Any]) -> Placement:
+        return cls(
+            node=str(d["node"]),
+            rank=int(d["rank"]),
+            order=int(d["order"]),
+            span=int(d.get("span", 1)),
+        )
+
+    def to_dict(self) -> Json:
+        out: Json = {"node": self.node, "rank": self.rank, "order": self.order}
+        if self.span != 1:
+            out["span"] = self.span
+        return out
+
+
+@dataclass(frozen=True, slots=True)
+class Layout:
+    """A partial, ordinal overlay on a view. It carries no pixel: the model
+    states order, a render profile states size, and the exporter does the
+    arithmetic. A node the view returns and this does not mention is placed by
+    the exporter and marked derived."""
+
+    direction: str = "down"  # down | up | right | left
+    placements: tuple[Placement, ...] = ()
+    origin: str = ""  # manual | imported | derived
+    tool: str = ""
+    model_digest: str = ""
+
+    @classmethod
+    def from_dict(cls, d: Mapping[str, Any]) -> Layout:
+        return cls(
+            direction=str(d.get("direction", "down")),
+            placements=tuple(Placement.from_dict(p) for p in d.get("placements") or ()),
+            origin=str(d.get("origin", "")),
+            tool=str(d.get("tool", "")),
+            model_digest=str(d.get("modelDigest", "")),
+        )
+
+    def to_dict(self) -> Json:
+        out: Json = {
+            "direction": self.direction,
+            "placements": [p.to_dict() for p in self.placements],
+        }
+        _put(out, "origin", self.origin)
+        _put(out, "tool", self.tool)
+        _put(out, "modelDigest", self.model_digest)
+        return out
+
+
+@dataclass(frozen=True, slots=True)
 class View:
     id: str
     title: str
     include: tuple[Any, ...]  # queries: "*" or {type|tag|inside|neighbors: ...}
     exclude: tuple[Any, ...] = ()
     description: str = ""
+    layout: Layout | None = None
 
     @classmethod
     def from_dict(cls, d: Mapping[str, Any]) -> View:
+        layout = d.get("layout")
         return cls(
             id=str(d["id"]),
             title=str(d["title"]),
             include=tuple(d.get("include") or ()),
             exclude=tuple(d.get("exclude") or ()),
             description=str(d.get("description", "")),
+            layout=Layout.from_dict(layout) if layout else None,
         )
 
     def to_dict(self) -> Json:
         out: Json = {"id": self.id, "title": self.title, "include": list(self.include)}
         _put(out, "exclude", self.exclude)
         _put(out, "description", self.description)
+        if self.layout is not None:
+            out["layout"] = self.layout.to_dict()
         return out
 
 

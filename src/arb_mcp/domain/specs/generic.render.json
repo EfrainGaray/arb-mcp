@@ -1,0 +1,15 @@
+{
+  "$comment": "Render profile for any notation that is not C4 (UML use cases, deployment, ...): plain drawio primitives, one flat diagram, containers grow to fit their children. Sizes are the exporter's choice, not the model's.",
+  "profile": "generic-drawio",
+  "version": "1.0",
+  "units": "px",
+  "grid": { "rankGap": 20, "orderGap": 40, "labelRoom": 36 },
+  "nodeTypes": {
+    "actor":   { "size": [70, 90],  "shape": "umlActor" },
+    "useCase": { "size": [200, 80], "shape": "ellipse" }
+  },
+  "relationTypes": {
+    "default": { "line": "solid", "arrow": "blockThin", "stroke": "#828282", "routing": "orthogonal" }
+  },
+  "defaults": { "size": [200, 80], "shape": "rect" }
+}
