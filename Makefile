@@ -6,7 +6,7 @@ PY ?= python
 .PHONY: install lint format typecheck test layers deps audit ci
 
 install:
-	$(PY) -m pip install --quiet --upgrade pip
+	$(PY) -m pip install --quiet --upgrade pip setuptools
 	$(PY) -m pip install --quiet -e '.[http,dev]'
 
 lint:
