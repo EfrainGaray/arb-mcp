@@ -29,6 +29,18 @@ validation path by construction.
 - plain pytest for everything else; `engine_golden.json` pins the verdicts
   measured against the official Structurizr CLI.
 
+## Release (reproducible, host-agnostic)
+
+    make release        # wheel + sdist, CycloneDX SBOM, SHA256SUMS, OCI image
+    make push REGISTRY=registry.example/arch/arb-mcp
+
+Every target lives in the Makefile; `.github/workflows/release.yml` and the
+`release` job in `.gitlab-ci.yml` only run it on a `v*` tag and keep `dist/`.
+The base image is pinned by digest, the runtime installs the wheel that was
+just built (not the source tree), and the image carries OCI labels with the
+version and commit. Version has one source: `pyproject.toml`, read at runtime
+through `importlib.metadata` and reported by `/health`.
+
 ## Develop
 
     python -m venv .venv && . .venv/bin/activate

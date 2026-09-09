@@ -34,6 +34,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from ... import __version__
 from ...application.build_model import C4_SPEC, build_model
 from ...application.check_catalog import check_catalog
 from ...application.convert_model import FORMATS, convert_source
@@ -149,7 +150,7 @@ def create_app(token: str | None = None, *, auth: Authenticator | None = None) -
 
     app = FastAPI(
         title="arb-mcp",
-        version="0.1.0",
+        version=__version__,
         summary="Deterministic C4/DSL validation, conversion and catalog reconciliation.",
         description=(
             "The same five tools the MCP server exposes over stdio, over HTTP. "
@@ -161,7 +162,7 @@ def create_app(token: str | None = None, *, auth: Authenticator | None = None) -
 
     @app.get("/health", tags=["ops"])
     def health() -> dict[str, str]:
-        return {"status": "ok", "service": "arb-mcp"}
+        return {"status": "ok", "service": "arb-mcp", "version": __version__}
 
     @app.get("/v1/contract", tags=["tools"])
     def contract() -> dict[str, Any]:

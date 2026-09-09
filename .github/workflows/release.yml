@@ -1,0 +1,22 @@
+# Thin on purpose: `make release` owns the build; this only runs it on a tag and
+# keeps the artefacts. Pushing the image needs REGISTRY + credentials, which
+# stay a deployment concern of whoever hosts the registry.
+name: release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: make install
+      - run: make ci
+      - run: make release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arb-mcp-${{ github.ref_name }}
+          path: dist/

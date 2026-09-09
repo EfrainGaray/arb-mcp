@@ -11,3 +11,5 @@ lab/
 coverage.xml
 htmlcov/
 .hypothesis/
+dist/
+.sbom-env/
