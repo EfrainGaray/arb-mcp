@@ -89,7 +89,46 @@ deterministic.
 
 **Notes.** The returned `model` is the interchange form; pass it as `source` to the
 other tools. Relations are copied before normalisation, so the caller's list is not
-mutated.
+mutated. A node or relation whose `type` the injected spec does not declare is a
+schema-valid model that fails the gate: `model.type.undeclared` /
+`model.relation.type.undeclared`, both `ERROR`. That is the enforcement behind
+"the agent cannot invent types" — until 2026-09-08 it was only a claim (audit H5).
+
+---
+
+## The same five over HTTP (`arb-mcp-http`)
+
+`infra/http/app.py` is a FastAPI adapter over the same use cases — no logic of its
+own, `domain/` never imports it, and FastAPI is an optional extra
+(`pip install arb-mcp[http]`) so the core stays framework-free. It exists for two
+callers stdio cannot serve: a CI pipeline, and a demo (`/docs` is the OpenAPI page).
+
+| tool | route | body |
+|---|---|---|
+| `describe_contract` | `GET /v1/contract` | — |
+| `build_model_tool` | `POST /v1/build` | `{nodes, relations?, name?}` |
+| `validate_model` | `POST /v1/validate` | `{source, include_implied?}` |
+| `convert_model` | `POST /v1/convert` | `{source, to?}` — `structurizr` returns `text/plain` |
+| `check_catalog` | `POST /v1/catalog` | `{source}` |
+| the MCP itself | `/mcp` | streamable HTTP from the SDK, same token |
+
+Bodies and JSON responses are identical to the tools'. The only translation this
+layer makes is the HTTP status, and it maps the two kinds of failure above:
+**structural → 422**, unknown format → 400, catalog unreachable → 503, and a
+finding is not a failure → **200 with `may_merge`** in the body.
+
+**Auth.** Bearer token from `ARB_HTTP_TOKEN`, compared in constant time, required on
+everything except `/health`, `/docs`, `/openapi.json`. The app refuses to start
+without one: this surface is never anonymous. It is a middleware and not a
+dependency on purpose, so the mounted `/mcp` is covered too.
+
+**Audit.** One JSON line per request on the `arb_mcp.audit` logger — method, path,
+status, milliseconds, and `caller` (a 12-hex prefix of the token's SHA-256, enough
+to tell two tokens apart; the token itself is never logged).
+
+**Run.** `ARB_HTTP_TOKEN=… arb-mcp-http` (binds `127.0.0.1:8000`; set
+`ARB_HTTP_HOST=0.0.0.0` only behind TLS). Or the image: `Dockerfile` is
+multi-stage, runs as a non-root user, and has a `/health` HEALTHCHECK.
 
 ---
 

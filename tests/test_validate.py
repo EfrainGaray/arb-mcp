@@ -37,6 +37,33 @@ def test_agatha_has_blocking_findings():
     assert all(f.severity.value == "ERROR" for f in report.blocking)
 
 
+def test_undeclared_node_type_is_blocking():
+    """The spec is the vocabulary. A type it does not declare must not pass the gate.
+
+    Before this rule a node typed "nope" reached may_merge=true and the engine
+    minted "model.nope.description" from it (found via the HTTP tests, 2026-09-08).
+    """
+    from arb_mcp.application.build_model import build_model
+    built = build_model([{"id": "x", "type": "nope", "name": "X", "description": "d"}])
+    assert not built.report.may_merge
+    rules = [f.rule for f in built.report.blocking]
+    assert "model.type.undeclared" in rules
+
+
+def test_undeclared_relation_type_is_blocking():
+    from arb_mcp.application.build_model import build_model
+    nodes = [{"id": "a", "type": "person", "name": "A", "description": "d"},
+             {"id": "b", "type": "softwareSystem", "name": "B", "description": "d"}]
+    built = build_model(nodes, [{"from": "a", "to": "b", "type": "teleports"}])
+    assert "model.relation.type.undeclared" in [f.rule for f in built.report.blocking]
+
+
+def test_declared_types_do_not_trigger_the_rule():
+    """Agatha only uses declared types: the new rule must add nothing to its verdict."""
+    report = validate_source(AGATHA)
+    assert not [f for f in report.findings if f.rule.endswith("type.undeclared")]
+
+
 def test_invalid_source_is_a_model_error_not_a_crash():
     with pytest.raises(ModelError):
         load("this is not a design at all {{{")
