@@ -1,4 +1,5 @@
 """LeanIX adapter with urlopen mocked — no network. Covers Fable M1/M2/B1."""
+
 import io
 import json
 import urllib.error
@@ -18,8 +19,17 @@ def _token():
 
 
 def _graphql(names):
-    return _resp({"data": {"allFactSheets": {"edges": [
-        {"node": {"id": f"fs-{n}", "name": n, "type": "Application"}} for n in names]}}})
+    return _resp(
+        {
+            "data": {
+                "allFactSheets": {
+                    "edges": [
+                        {"node": {"id": f"fs-{n}", "name": n, "type": "Application"}} for n in names
+                    ]
+                }
+            }
+        }
+    )
 
 
 def test_exact_name_match_is_known():
@@ -46,8 +56,10 @@ def test_case_insensitive_match():
 def test_network_error_becomes_catalog_error():
     """M1: a network failure must surface as CatalogError, not escape raw."""
     cat = LeanIxCatalog("https://x.leanix.net", "t")
-    with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("down")), \
-         pytest.raises(CatalogError):
+    with (
+        patch("urllib.request.urlopen", side_effect=urllib.error.URLError("down")),
+        pytest.raises(CatalogError),
+    ):
         cat.lookup("Billing", "softwareSystem")
 
 

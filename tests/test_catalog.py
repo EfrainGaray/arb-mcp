@@ -1,4 +1,5 @@
 """Catalog reconciliation against a fake source of truth — no network."""
+
 from arb_mcp.application.check_catalog import check_catalog
 from arb_mcp.application.ports import CatalogEntry
 from arb_mcp.domain.loading import load

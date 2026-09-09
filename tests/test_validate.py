@@ -1,6 +1,7 @@
 """The first vertical: the linter reaches the same verdict through the use case
 that the ported engine reaches directly, and the MCP tool speaks JSON on top.
 """
+
 import json
 from pathlib import Path
 
@@ -44,6 +45,7 @@ def test_undeclared_node_type_is_blocking():
     minted "model.nope.description" from it (found via the HTTP tests, 2026-09-08).
     """
     from arb_mcp.application.build_model import build_model
+
     built = build_model([{"id": "x", "type": "nope", "name": "X", "description": "d"}])
     assert not built.report.may_merge
     rules = [f.rule for f in built.report.blocking]
@@ -52,8 +54,11 @@ def test_undeclared_node_type_is_blocking():
 
 def test_undeclared_relation_type_is_blocking():
     from arb_mcp.application.build_model import build_model
-    nodes = [{"id": "a", "type": "person", "name": "A", "description": "d"},
-             {"id": "b", "type": "softwareSystem", "name": "B", "description": "d"}]
+
+    nodes = [
+        {"id": "a", "type": "person", "name": "A", "description": "d"},
+        {"id": "b", "type": "softwareSystem", "name": "B", "description": "d"},
+    ]
     built = build_model(nodes, [{"from": "a", "to": "b", "type": "teleports"}])
     assert "model.relation.type.undeclared" in [f.rule for f in built.report.blocking]
 
@@ -100,11 +105,16 @@ def test_arch_with_workspace_word_is_not_misrouted():
 
 def test_empty_model_cannot_merge():
     """Regression: a schema-valid model with zero nodes must be blocked."""
-    empty = json.dumps({
-        "version": "1.0", "name": "x", "scope": "system",
-        "spec": {"nodeTypes": {"person": {"contains": []}}},
-        "nodes": [], "relations": [],
-    })
+    empty = json.dumps(
+        {
+            "version": "1.0",
+            "name": "x",
+            "scope": "system",
+            "spec": {"nodeTypes": {"person": {"contains": []}}},
+            "nodes": [],
+            "relations": [],
+        }
+    )
     report = validate_source(empty)
     assert not report.may_merge
     assert any(f.rule == "model.empty" for f in report.blocking)

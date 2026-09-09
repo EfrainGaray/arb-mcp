@@ -7,6 +7,7 @@ catalog id) and which are new and must be registered to keep the catalog current
 
 It is informational: it never blocks a merge. Only deterministic validation does.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -58,7 +59,12 @@ def check_catalog(model: dict[str, Any], catalog: CatalogPort) -> CatalogReport:
             report.unknown.append({"id": n["id"], "name": name, "type": n["type"]})
         else:
             report.known.append(
-                {"id": n["id"], "name": name, "type": n["type"],
-                 "catalog_id": entry.catalog_id, "catalog_name": entry.name}
+                {
+                    "id": n["id"],
+                    "name": name,
+                    "type": n["type"],
+                    "catalog_id": entry.catalog_id,
+                    "catalog_name": entry.name,
+                }
             )
     return report

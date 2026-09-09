@@ -14,6 +14,7 @@ so a container and a laptop start the same way. Exactly one authentication mode:
 - ``ARB_HTTP_PORT``   default ``8000``
 - ``LEANIX_BASE_URL`` / ``LEANIX_API_TOKEN``  only for ``/v1/catalog``
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,7 +35,7 @@ def main() -> None:
         app,
         host=os.environ.get("ARB_HTTP_HOST", "127.0.0.1"),
         port=int(os.environ.get("ARB_HTTP_PORT", "8000")),
-        log_level="warning",   # the audit logger is the request log; uvicorn's would duplicate it
+        log_level="warning",  # the audit logger is the request log; uvicorn's would duplicate it
     )
 
 

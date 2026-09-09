@@ -9,6 +9,7 @@ relations, and the C1/C2/C3 views. Types with no inline element syntax in
 Structurizr (a ``decision`` is an ADR, not a model element) are skipped; the
 caller keeps them in the canonical model regardless.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -21,7 +22,7 @@ def _q(text: Any) -> str:
     # Structurizr DSL has no escape for a double quote inside a string, so a name
     # carrying one would silently corrupt on reload. Fold it to an apostrophe:
     # lossy but legible and guaranteed to round-trip.
-    return '"' + str(text).replace('"', "'").replace('\n', ' ').replace('\r', ' ') + '"'
+    return '"' + str(text).replace('"', "'").replace("\n", " ").replace("\r", " ") + '"'
 
 
 def _element(node: dict[str, Any], depth: int, lines: list[str]) -> None:
@@ -29,14 +30,14 @@ def _element(node: dict[str, Any], depth: int, lines: list[str]) -> None:
     if ntype not in _C4_ELEMENT:
         return
     pad = "    " * depth
-    head = f'{pad}{node["id"]} = {ntype} {_q(node.get("name", node["id"]))}'
+    head = f"{pad}{node['id']} = {ntype} {_q(node.get('name', node['id']))}"
     if node.get("description"):
-        head += f' {_q(node["description"])}'
+        head += f" {_q(node['description'])}"
     if ntype in _WITH_TECH and node.get("technology"):
         # description slot must be present before technology
         if not node.get("description"):
             head += ' ""'
-        head += f' {_q(node["technology"])}'
+        head += f" {_q(node['technology'])}"
     children = [c for c in node.get("nodes", []) if c.get("type") in _C4_ELEMENT]
     if children:
         lines.append(head + " {")
@@ -59,9 +60,9 @@ def to_structurizr(model: dict[str, Any]) -> str:
     lines: list[str] = []
     name = model.get("name", "Workspace")
     desc = model.get("description", "")
-    header = f'workspace {_q(name)}'
+    header = f"workspace {_q(name)}"
     if desc:
-        header += f' {_q(desc)}'
+        header += f" {_q(desc)}"
     lines.append(header + " {")
     lines.append("    model {")
 
@@ -80,13 +81,13 @@ def to_structurizr(model: dict[str, Any]) -> str:
             continue
         if by_id.get(rel["to"], {}).get("type") not in _C4_ELEMENT:
             continue
-        line = f'        {rel["from"]} -> {rel["to"]}'
+        line = f"        {rel['from']} -> {rel['to']}"
         if rel.get("description"):
-            line += f' {_q(rel["description"])}'
+            line += f" {_q(rel['description'])}"
         if rel.get("technology"):
             if not rel.get("description"):
                 line += ' ""'
-            line += f' {_q(rel["technology"])}'
+            line += f" {_q(rel['technology'])}"
         lines.append(line)
     lines.append("    }")
 

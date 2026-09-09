@@ -7,6 +7,7 @@ surface, the result is validated against the normative schema before it is
 allowed to leave this module: a model that does not survive the schema does not
 exist as far as the rest of the system is concerned.
 """
+
 from __future__ import annotations
 
 import json

@@ -1,4 +1,5 @@
 """drawio export: separate C4 views, each standalone XML with real stencil styles."""
+
 import json
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -12,9 +13,9 @@ from arb_mcp.domain.loading import load
 def _vertex_ids(root):
     """Vertex ids live on the <object> for C4 cards, on the <mxCell> for boundaries."""
     ids = {o.get("id") for o in root.iter("object")}
-    ids |= {c.get("id") for c in root.iter("mxCell")
-            if c.get("vertex") == "1" and c.get("id")}
+    ids |= {c.get("id") for c in root.iter("mxCell") if c.get("vertex") == "1" and c.get("id")}
     return ids
+
 
 FIX = Path(__file__).parent / "fixtures"
 DSL = (FIX / "simple.dsl").read_text("utf-8")

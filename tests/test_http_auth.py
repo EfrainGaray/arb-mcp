@@ -6,6 +6,7 @@ scope, algorithm — against tokens we mint ourselves. What they cannot prove is
 JWKS fetch from a live issuer; that is exercised against a real Keycloak in the
 deployment check, not here.
 """
+
 from __future__ import annotations
 
 import json
@@ -40,8 +41,13 @@ def other_key() -> Any:
 def mint(priv: Any, **over: Any) -> str:
     now = int(time.time())
     claims: dict[str, Any] = {
-        "iss": ISS, "aud": AUD, "sub": "3f1c-service-account", "azp": "ci-pipeline",
-        "iat": now, "exp": now + 300, "scope": "arb:validate arb:convert",
+        "iss": ISS,
+        "aud": AUD,
+        "sub": "3f1c-service-account",
+        "azp": "ci-pipeline",
+        "iat": now,
+        "exp": now + 300,
+        "scope": "arb:validate arb:convert",
     }
     claims.update(over)
     for k in [k for k, v in claims.items() if v is None]:
@@ -63,7 +69,8 @@ def client(jwt_auth: JwtAuth) -> TestClient:
 
 # ── the verifier itself ───────────────────────────────────────────────────────
 def test_valid_token_names_the_client_not_the_uuid(
-    keys: tuple[Any, Any], jwt_auth: JwtAuth,
+    keys: tuple[Any, Any],
+    jwt_auth: JwtAuth,
 ) -> None:
     p = jwt_auth.authenticate("Bearer " + mint(keys[0]))
     assert p == Principal(subject="ci-pipeline", scopes=frozenset({"arb:validate", "arb:convert"}))
@@ -74,15 +81,21 @@ def test_person_token_falls_back_to_sub(keys: tuple[Any, Any], jwt_auth: JwtAuth
     assert p.subject == "efrain"
 
 
-@pytest.mark.parametrize(("bad", "status"), [
-    ({"exp": int(time.time()) - 3600}, 401),          # expired
-    ({"aud": "someone-else"}, 401),                    # wrong audience
-    ({"iss": "https://evil.example.test"}, 401),      # wrong issuer
-    ({"scope": "arb:convert"}, 403),                   # authenticated, scope missing
-    ({"scope": None}, 403),                            # no scope claim at all
-])
+@pytest.mark.parametrize(
+    ("bad", "status"),
+    [
+        ({"exp": int(time.time()) - 3600}, 401),  # expired
+        ({"aud": "someone-else"}, 401),  # wrong audience
+        ({"iss": "https://evil.example.test"}, 401),  # wrong issuer
+        ({"scope": "arb:convert"}, 403),  # authenticated, scope missing
+        ({"scope": None}, 403),  # no scope claim at all
+    ],
+)
 def test_refusals(
-    keys: tuple[Any, Any], jwt_auth: JwtAuth, bad: dict[str, Any], status: int,
+    keys: tuple[Any, Any],
+    jwt_auth: JwtAuth,
+    bad: dict[str, Any],
+    status: int,
 ) -> None:
     with pytest.raises(AuthError) as e:
         jwt_auth.authenticate("Bearer " + mint(keys[0], **bad))
@@ -106,7 +119,8 @@ def test_hmac_is_refused_even_when_the_resolver_hands_back_the_secret() -> None:
     now = int(time.time())
     forged = jwt.encode(
         {"iss": ISS, "aud": AUD, "sub": "x", "exp": now + 300, "scope": "arb:validate"},
-        "shared-secret", algorithm="HS256",
+        "shared-secret",
+        algorithm="HS256",
     )
     a = JwtAuth(ISS, AUD, key_resolver=lambda _t: "shared-secret")
     with pytest.raises(AuthError) as e:
@@ -129,7 +143,9 @@ def test_not_a_bearer_header_is_401(jwt_auth: JwtAuth) -> None:
 
 # ── wired into the adapter ────────────────────────────────────────────────────
 def test_adapter_accepts_idp_token_and_audits_the_client_id(
-    client: TestClient, keys: tuple[Any, Any], caplog: pytest.LogCaptureFixture,
+    client: TestClient,
+    keys: tuple[Any, Any],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
         r = client.get("/v1/contract", headers={"Authorization": "Bearer " + mint(keys[0])})
@@ -139,7 +155,8 @@ def test_adapter_accepts_idp_token_and_audits_the_client_id(
 
 
 def test_adapter_returns_403_not_401_when_only_the_scope_is_missing(
-    client: TestClient, keys: tuple[Any, Any],
+    client: TestClient,
+    keys: tuple[Any, Any],
 ) -> None:
     tok = mint(keys[0], scope="other")
     r = client.get("/v1/contract", headers={"Authorization": "Bearer " + tok})
@@ -154,9 +171,13 @@ def test_adapter_401_body_never_echoes_the_token(client: TestClient, keys: tuple
 
 # ── mode selection ────────────────────────────────────────────────────────────
 def test_from_env_picks_oidc_when_issuer_is_set() -> None:
-    a = from_env({
-        "ARB_OIDC_ISSUER": ISS, "ARB_OIDC_AUDIENCE": AUD, "ARB_OIDC_SCOPE": "arb:validate",
-    })
+    a = from_env(
+        {
+            "ARB_OIDC_ISSUER": ISS,
+            "ARB_OIDC_AUDIENCE": AUD,
+            "ARB_OIDC_SCOPE": "arb:validate",
+        }
+    )
     assert isinstance(a, JwtAuth) and a.required_scope == "arb:validate"
 
 
@@ -179,6 +200,7 @@ def test_oidc_without_audience_is_refused() -> None:
 def test_discovery_rejects_a_document_for_another_issuer(monkeypatch: pytest.MonkeyPatch) -> None:
     """A discovery document that names a different issuer is an attack or a
     misconfiguration; either way the JWKS it points at must not be trusted."""
+
     class _Resp:
         def __enter__(self) -> _Resp:
             return self
@@ -187,7 +209,9 @@ def test_discovery_rejects_a_document_for_another_issuer(monkeypatch: pytest.Mon
             return None
 
         def read(self) -> bytes:
-            return json.dumps({"issuer": "https://other.test", "jwks_uri": "https://other.test/jwks"}).encode()
+            return json.dumps(
+                {"issuer": "https://other.test", "jwks_uri": "https://other.test/jwks"}
+            ).encode()
 
     monkeypatch.setattr(auth_mod.urllib.request, "urlopen", lambda *_a, **_k: _Resp())
     with pytest.raises(RuntimeError):

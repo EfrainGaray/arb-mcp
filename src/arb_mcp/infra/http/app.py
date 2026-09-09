@@ -17,6 +17,7 @@ failure the tools already distinguish:
 - catalog not reachable                     → 503
 - a *finding* is not a failure              → 200 with ``may_merge`` in the body
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -113,13 +114,17 @@ class _Guard(BaseHTTPMiddleware):
         return response
 
     def _log(self, request: Request, response: Response, t0: float, caller: str) -> None:
-        _audit.info(json.dumps({
-            "method": request.method,
-            "path": request.url.path,
-            "status": response.status_code,
-            "ms": round((time.perf_counter() - t0) * 1000, 1),
-            "caller": caller,
-        }))
+        _audit.info(
+            json.dumps(
+                {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status": response.status_code,
+                    "ms": round((time.perf_counter() - t0) * 1000, 1),
+                    "caller": caller,
+                }
+            )
+        )
 
 
 # ── app ───────────────────────────────────────────────────────────────────────
@@ -169,9 +174,7 @@ def create_app(token: str | None = None, *, auth: Authenticator | None = None) -
         try:
             built = build_model(body.nodes, body.relations, name=body.name)
         except ModelError as exc:
-            return JSONResponse(
-                {"ok": False, "error": "invalid_model", "detail": str(exc)}, 422
-            )
+            return JSONResponse({"ok": False, "error": "invalid_model", "detail": str(exc)}, 422)
         return JSONResponse(
             {"ok": True, "model": built.model, "validation": built.report.to_dict()}
         )
@@ -193,13 +196,9 @@ def create_app(token: str | None = None, *, auth: Authenticator | None = None) -
         try:
             out = convert_source(body.source, body.to)
         except ModelError as exc:
-            return JSONResponse(
-                {"ok": False, "error": "invalid_model", "detail": str(exc)}, 422
-            )
+            return JSONResponse({"ok": False, "error": "invalid_model", "detail": str(exc)}, 422)
         except ValueError as exc:
-            return JSONResponse(
-                {"ok": False, "error": str(exc), "formats": list(FORMATS)}, 400
-            )
+            return JSONResponse({"ok": False, "error": str(exc), "formats": list(FORMATS)}, 400)
         if body.to == "structurizr":
             return PlainTextResponse(out)
         return Response(out, media_type="application/json")
@@ -211,9 +210,7 @@ def create_app(token: str | None = None, *, auth: Authenticator | None = None) -
             model = loading.load(body.source)
             report = check_catalog(model, from_env())
         except ModelError as exc:
-            return JSONResponse(
-                {"ok": False, "error": "invalid_model", "detail": str(exc)}, 422
-            )
+            return JSONResponse({"ok": False, "error": "invalid_model", "detail": str(exc)}, 422)
         except RuntimeError as exc:
             return JSONResponse(
                 {"ok": False, "error": "catalog_unavailable", "detail": str(exc)}, 503

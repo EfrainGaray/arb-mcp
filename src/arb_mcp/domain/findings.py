@@ -6,6 +6,7 @@ implementation detail of the comparison harness; everything above the domain
 speaks in ``Finding`` objects instead, where severity is a closed enum and the
 subject is addressable.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -89,4 +89,4 @@ exclude_also = [
 # Dev tools are not imported by the package; they are commands. Tell deptry so it
 # does not report them as unused, and keep DEP003 (a transitive import) as an error:
 # that is exactly the silent missing dependency this gate exists to catch.
-pep621_dev_dependency_groups = ["dev"]
+optional_dependencies_dev_groups = ["dev"]

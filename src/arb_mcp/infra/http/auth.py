@@ -21,6 +21,7 @@ Setting both is refused as ambiguous; setting neither is refused because this
 surface is never anonymous. ``domain/`` and ``application/`` know nothing of this
 file: authentication is a transport concern and stays in the adapter.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -42,6 +43,7 @@ ALGORITHMS = ("RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES
 @dataclass(frozen=True, slots=True)
 class Principal:
     """The verified caller, as the audit line names it."""
+
     subject: str
     scopes: frozenset[str] = field(default_factory=frozenset)
 
@@ -96,7 +98,7 @@ def _discover_jwks_url(issuer: str) -> str:
     vendor; the discovery document is what every one of them publishes.
     """
     url = issuer.rstrip("/") + "/.well-known/openid-configuration"
-    with urllib.request.urlopen(url, timeout=5) as r:      # noqa: S310 - issuer is operator config
+    with urllib.request.urlopen(url, timeout=5) as r:  # noqa: S310 - issuer is operator config
         doc: dict[str, Any] = json.load(r)
     if doc.get("issuer") != issuer:
         raise RuntimeError(
@@ -145,8 +147,12 @@ class JwtAuth:
         try:
             key = self._resolve_key(token)
             claims: dict[str, Any] = jwt.decode(
-                token, key, algorithms=list(ALGORITHMS),
-                issuer=self.issuer, audience=self.audience, leeway=self._leeway,
+                token,
+                key,
+                algorithms=list(ALGORITHMS),
+                issuer=self.issuer,
+                audience=self.audience,
+                leeway=self._leeway,
                 options={"require": ["exp", "iss", "aud"]},
             )
         except jwt.PyJWTError as exc:
@@ -173,7 +179,8 @@ def from_env(env: dict[str, str] | None = None) -> Authenticator:
         raise RuntimeError("ARB_OIDC_ISSUER and ARB_HTTP_TOKEN are both set; pick one")
     if issuer:
         return JwtAuth(
-            issuer, e.get("ARB_OIDC_AUDIENCE", ""),
+            issuer,
+            e.get("ARB_OIDC_AUDIENCE", ""),
             jwks_url=e.get("ARB_OIDC_JWKS_URL") or None,
             required_scope=e.get("ARB_OIDC_SCOPE") or None,
         )

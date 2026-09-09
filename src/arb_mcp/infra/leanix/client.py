@@ -9,6 +9,7 @@ must be registered.
 Read-only: it only looks components up, never writes. The bank picks the instance
 and token by environment; the code commits to no tenant.
 """
+
 from __future__ import annotations
 
 import base64
@@ -48,8 +49,13 @@ query($search: String!, $type: String!) {
 
 
 class LeanIxCatalog:
-    def __init__(self, base_url: str, api_token: str,
-                 type_map: dict[str, str] | None = None, timeout: float = 30.0):
+    def __init__(
+        self,
+        base_url: str,
+        api_token: str,
+        type_map: dict[str, str] | None = None,
+        timeout: float = 30.0,
+    ):
         self._base = base_url.rstrip("/")
         self._token = api_token
         self._types = type_map or _DEFAULT_TYPE_MAP
@@ -68,8 +74,10 @@ class LeanIxCatalog:
         req = urllib.request.Request(  # noqa: S310 - scheme pinned to https in __init__
             f"{self._base}/services/mtm/v1/oauth2/token",
             data=urllib.parse.urlencode({"grant_type": "client_credentials"}).encode(),
-            headers={"Authorization": f"Basic {cred}",
-                     "Content-Type": "application/x-www-form-urlencoded"},
+            headers={
+                "Authorization": f"Basic {cred}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
         )
         try:
             with urllib.request.urlopen(req, timeout=self._timeout) as resp:  # noqa: S310
@@ -85,8 +93,10 @@ class LeanIxCatalog:
         req = urllib.request.Request(  # noqa: S310 - scheme pinned to https in __init__
             f"{self._base}/services/pathfinder/v1/graphql",
             data=json.dumps(payload).encode(),
-            headers={"Authorization": f"Bearer {self._authenticate()}",
-                     "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {self._authenticate()}",
+                "Content-Type": "application/json",
+            },
         )
         with urllib.request.urlopen(req, timeout=self._timeout) as resp:  # noqa: S310
             body: dict[str, Any] = json.loads(resp.read())

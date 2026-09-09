@@ -2,6 +2,7 @@
 
 Proves agnosticism end to end — one schema serves C4 and UML — and that the
 drawio exporter switches stencils by reading the spec, not a flag."""
+
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -27,8 +28,8 @@ def test_uml_drawio_uses_uml_stencil_not_c4():
     views = drawio_views(load(UML))
     assert len(views) == 1 and views[0]["level"] == "UML"  # flat, no C1/C2/C3
     xml = views[0]["xml"]
-    assert "shape=umlActor" in xml       # actors as stick figures
-    assert "ellipse;" in xml             # use cases as ellipses
+    assert "shape=umlActor" in xml  # actors as stick figures
+    assert "ellipse;" in xml  # use cases as ellipses
     assert "fillColor=#23A2D9" not in xml  # no C4 container blue here
     root = ET.fromstring(xml)
     assert len([c for c in root.iter("mxCell") if c.get("edge") == "1"]) == 5

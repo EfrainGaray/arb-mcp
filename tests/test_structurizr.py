@@ -1,4 +1,5 @@
 """Structurizr export: the emitted DSL round-trips back through the loader."""
+
 from pathlib import Path
 
 from arb_mcp.application.convert_model import convert_source
@@ -18,11 +19,13 @@ def test_structurizr_round_trips():
 
     def c4_ids(m):
         out = set()
+
         def walk(ns):
             for n in ns:
                 if n.get("type") in {"person", "softwareSystem", "container", "component"}:
                     out.add(n["id"])
                 walk(n.get("nodes", []))
+
         walk(m["nodes"])
         return out
 
@@ -39,4 +42,4 @@ def test_structurizr_has_views_per_level():
 def test_structurizr_carries_technology():
     dsl = convert_source(DSL, "structurizr")
     assert "TypeScript" in dsl  # the container's technology
-    assert "HTTPS" in dsl       # the relation's technology
+    assert "HTTPS" in dsl  # the relation's technology

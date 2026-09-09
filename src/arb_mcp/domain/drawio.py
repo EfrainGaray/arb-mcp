@@ -14,6 +14,7 @@ edge. Nothing is invented; the output opens as native, editable C4 shapes.
 These are views over the same canonical model the linter validates, so a diagram
 and its verdict cannot drift.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -63,12 +64,14 @@ _EDGE = (
 # spec is not C4 — the same canonical model, a different stencil.
 _UML_STYLE: dict[str, str] = {
     "actor": "shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;"
-             "outlineConnect=0;",
+    "outlineConnect=0;",
     "useCase": "ellipse;whiteSpace=wrap;html=1;",
 }
 _UML_FALLBACK = "rounded=0;whiteSpace=wrap;html=1;"
-_UML_BOUNDARY = ("rounded=0;whiteSpace=wrap;html=1;dashed=1;verticalAlign=top;"
-                 "align=center;fillColor=none;strokeColor=#666666;container=1;collapsible=0;")
+_UML_BOUNDARY = (
+    "rounded=0;whiteSpace=wrap;html=1;dashed=1;verticalAlign=top;"
+    "align=center;fillColor=none;strokeColor=#666666;container=1;collapsible=0;"
+)
 
 
 def _is_c4(model: dict[str, Any]) -> bool:
@@ -93,8 +96,8 @@ def _index(model: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], dict[str, 
 
 def _top(nid: str, parent: dict[str, str | None]) -> str:
     cur = nid
-    while parent.get(cur) is not None:
-        cur = parent[cur]  # type: ignore[assignment]
+    while (up := parent.get(cur)) is not None:
+        cur = up
     return cur
 
 
@@ -119,18 +122,27 @@ def _label(node: dict[str, Any]) -> str:
     return "<br>".join(parts)
 
 
-_C4_TYPE_LABEL = {"person": "Person", "softwareSystem": "Software System",
-                  "container": "Container", "component": "Component"}
-_C4_LABEL_PLAIN = ('<font style="font-size: 16px"><b>%c4Name%</b></font>'
-                   '<div>[%c4Type%]</div><br><div><font style="font-size: 11px">'
-                   '<font color="#cccccc">%c4Description%</font></div>')
-_C4_LABEL_TECH = ('<font style="font-size: 16px"><b>%c4Name%</b></font>'
-                  '<div>[%c4Type%: %c4Technology%]</div><br><div><font style="font-size: 11px">'
-                  '<font color="#E6E6E6">%c4Description%</font></div>')
+_C4_TYPE_LABEL = {
+    "person": "Person",
+    "softwareSystem": "Software System",
+    "container": "Container",
+    "component": "Component",
+}
+_C4_LABEL_PLAIN = (
+    '<font style="font-size: 16px"><b>%c4Name%</b></font>'
+    '<div>[%c4Type%]</div><br><div><font style="font-size: 11px">'
+    '<font color="#cccccc">%c4Description%</font></div>'
+)
+_C4_LABEL_TECH = (
+    '<font style="font-size: 16px"><b>%c4Name%</b></font>'
+    '<div>[%c4Type%: %c4Technology%]</div><br><div><font style="font-size: 11px">'
+    '<font color="#E6E6E6">%c4Description%</font></div>'
+)
 
 
-def _c4_vertex(node: dict[str, Any], style: str, x: int, y: int, w: int, h: int,
-               parent: str = "1") -> str:
+def _c4_vertex(
+    node: dict[str, Any], style: str, x: int, y: int, w: int, h: int, parent: str = "1"
+) -> str:
     """A native drawio C4 element: an <object> with c4* attributes and a
     placeholder label, exactly as drawio's own C4 shape library builds it — so
     it opens as a real C4 card (name, [Type: Technology], description), not a
@@ -149,16 +161,17 @@ def _c4_vertex(node: dict[str, Any], style: str, x: int, y: int, w: int, h: int,
     attrs.append(f"c4Description={quoteattr(str(node.get('description', '')))}")
     attrs.append(f"id={quoteattr(node['id'])}")
     return (
-        f'<object {" ".join(attrs)}>'
+        f"<object {' '.join(attrs)}>"
         f'<mxCell style={quoteattr(style)} vertex="1" parent={quoteattr(parent)}>'
         f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell></object>'
     )
 
 
-def _vertex(cid: str, label: str, style: str, x: int, y: int, w: int, h: int,
-            parent: str = "1") -> str:
+def _vertex(
+    cid: str, label: str, style: str, x: int, y: int, w: int, h: int, parent: str = "1"
+) -> str:
     return (
-        f'<mxCell id={quoteattr(cid)} value={quoteattr(label)} style={quoteattr(style)} '
+        f"<mxCell id={quoteattr(cid)} value={quoteattr(label)} style={quoteattr(style)} "
         f'vertex="1" parent={quoteattr(parent)}>'
         f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>'
     )
@@ -166,7 +179,7 @@ def _vertex(cid: str, label: str, style: str, x: int, y: int, w: int, h: int,
 
 def _edge_cell(eid: str, label: str, src: str, dst: str) -> str:
     return (
-        f'<mxCell id={quoteattr(eid)} value={quoteattr(label)} style={quoteattr(_EDGE)} '
+        f"<mxCell id={quoteattr(eid)} value={quoteattr(label)} style={quoteattr(_EDGE)} "
         f'edge="1" parent="1" source={quoteattr(src)} target={quoteattr(dst)}>'
         f'<mxGeometry relative="1" as="geometry"/></mxCell>'
     )
@@ -180,7 +193,7 @@ def _mxfile(name: str, cells: list[str]) -> str:
         f'connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" '
         f'pageHeight="1100" math="0" shadow="0">'
         f'<root><mxCell id="0"/><mxCell id="1" parent="0"/>{body}</root>'
-        f'</mxGraphModel></diagram></mxfile>'
+        f"</mxGraphModel></diagram></mxfile>"
     )
 
 
@@ -246,9 +259,12 @@ def _view_c1(model: dict[str, Any]) -> dict[str, Any]:
         return t if t in top_ids else None
 
     cells += _edges_between(model, resolve)
-    return {"level": "C1", "scope": "system-landscape",
-            "name": f"{model.get('name', 'Architecture')} — C1 System Context",
-            "xml": _mxfile("C1 System Context", cells)}
+    return {
+        "level": "C1",
+        "scope": "system-landscape",
+        "name": f"{model.get('name', 'Architecture')} — C1 System Context",
+        "xml": _mxfile("C1 System Context", cells),
+    }
 
 
 def _view_c2(model: dict[str, Any], system: dict[str, Any]) -> dict[str, Any]:
@@ -259,11 +275,13 @@ def _view_c2(model: dict[str, Any], system: dict[str, Any]) -> dict[str, Any]:
     cells: list[str] = []
     # boundary of the in-focus system, containers nested inside it
     ch = 100
-    cells.append(_vertex(sid, _label(system), _BOUNDARY, 200, 40, 320,
-                         60 + len(containers) * (ch + 20)))
+    cells.append(
+        _vertex(sid, _label(system), _BOUNDARY, 200, 40, 320, 60 + len(containers) * (ch + 20))
+    )
     for i, c in enumerate(containers):
-        cells.append(_c4_vertex(c, _STYLE["container"],
-                                40, 40 + i * (ch + 20), 240, ch, parent=sid))
+        cells.append(
+            _c4_vertex(c, _STYLE["container"], 40, 40 + i * (ch + 20), 240, ch, parent=sid)
+        )
 
     def resolve(nid: str) -> str | None:
         if nid not in by_id:
@@ -289,23 +307,32 @@ def _view_c2(model: dict[str, Any], system: dict[str, Any]) -> dict[str, Any]:
         cells.append(_c4_vertex(ext, style, 600, ey, 210, 110))
         ey += 150
     cells += _edges_between(model, resolve)
-    return {"level": "C2", "scope": sid,
-            "name": f"{system.get('name', sid)} — C2 Containers",
-            "xml": _mxfile(f"C2 {system.get('name', sid)}", cells)}
+    return {
+        "level": "C2",
+        "scope": sid,
+        "name": f"{system.get('name', sid)} — C2 Containers",
+        "xml": _mxfile(f"C2 {system.get('name', sid)}", cells),
+    }
 
 
-def _view_c3(model: dict[str, Any], container: dict[str, Any],
-             by_id: dict[str, dict[str, Any]], parent: dict[str, str | None]) -> dict[str, Any]:
+def _view_c3(
+    model: dict[str, Any],
+    container: dict[str, Any],
+    by_id: dict[str, dict[str, Any]],
+    parent: dict[str, str | None],
+) -> dict[str, Any]:
     cid = container["id"]
     components = [c for c in container.get("nodes", []) if c.get("type") == "component"]
     comp_ids = {c["id"] for c in components}
     cells: list[str] = []
     ch = 90
-    cells.append(_vertex(cid, _label(container), _BOUNDARY, 200, 40, 320,
-                         60 + len(components) * (ch + 20)))
+    cells.append(
+        _vertex(cid, _label(container), _BOUNDARY, 200, 40, 320, 60 + len(components) * (ch + 20))
+    )
     for i, c in enumerate(components):
-        cells.append(_c4_vertex(c, _STYLE["component"],
-                                40, 40 + i * (ch + 20), 240, ch, parent=cid))
+        cells.append(
+            _c4_vertex(c, _STYLE["component"], 40, 40 + i * (ch + 20), 240, ch, parent=cid)
+        )
 
     def resolve(nid: str) -> str | None:
         if nid not in by_id:
@@ -331,14 +358,20 @@ def _view_c3(model: dict[str, Any], container: dict[str, Any],
 
     ey = 40
     for ext in externals.values():
-        style = _STYLE["person"] if ext["type"] == "person" else (
-            _STYLE["container"] if ext["type"] == "container" else _EXTERNAL)
+        style = (
+            _STYLE["person"]
+            if ext["type"] == "person"
+            else (_STYLE["container"] if ext["type"] == "container" else _EXTERNAL)
+        )
         cells.append(_c4_vertex(ext, style, 600, ey, 210, 110))
         ey += 150
     cells += _edges_between(model, resolve)
-    return {"level": "C3", "scope": cid,
-            "name": f"{container.get('name', cid)} — C3 Components",
-            "xml": _mxfile(f"C3 {container.get('name', cid)}", cells)}
+    return {
+        "level": "C3",
+        "scope": cid,
+        "name": f"{container.get('name', cid)} — C3 Components",
+        "xml": _mxfile(f"C3 {container.get('name', cid)}", cells),
+    }
 
 
 def to_c4_views(model: dict[str, Any]) -> list[dict[str, Any]]:
@@ -422,9 +455,12 @@ def _view_flat(model: dict[str, Any]) -> dict[str, Any]:
 
     cells += _edges_between(model, resolve)
     level = _flat_level(model)
-    return {"level": level, "scope": model.get("scope", "diagram"),
-            "name": f"{model.get('name', 'Model')} — {level}",
-            "xml": _mxfile(level, cells)}
+    return {
+        "level": level,
+        "scope": model.get("scope", "diagram"),
+        "name": f"{model.get('name', 'Model')} — {level}",
+        "xml": _mxfile(level, cells),
+    }
 
 
 def to_views(model: dict[str, Any]) -> list[dict[str, Any]]:

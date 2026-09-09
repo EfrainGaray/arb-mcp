@@ -4,6 +4,7 @@ Written before the adapter (bug = failing test first). Every test drives the app
 through Starlette's TestClient so the lifespan — which starts the mounted MCP session
 manager — runs exactly as it would under uvicorn.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,9 +20,21 @@ AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 NODES = [
     {"id": "cust", "type": "person", "name": "Customer", "description": "Pays"},
-    {"id": "bill", "type": "softwareSystem", "name": "Billing", "description": "Charges",
-     "nodes": [{"id": "api", "type": "container", "name": "API",
-                "description": "REST", "technology": "FastAPI"}]},
+    {
+        "id": "bill",
+        "type": "softwareSystem",
+        "name": "Billing",
+        "description": "Charges",
+        "nodes": [
+            {
+                "id": "api",
+                "type": "container",
+                "name": "API",
+                "description": "REST",
+                "technology": "FastAPI",
+            }
+        ],
+    },
 ]
 RELS = [{"from": "cust", "to": "api", "description": "Pays", "technology": "HTTPS"}]
 
@@ -32,8 +45,9 @@ def client() -> TestClient:
 
 
 def _model(client: TestClient) -> str:
-    r = client.post("/v1/build", json={"nodes": NODES, "relations": RELS, "name": "Billing"},
-                    headers=AUTH)
+    r = client.post(
+        "/v1/build", json={"nodes": NODES, "relations": RELS, "name": "Billing"}, headers=AUTH
+    )
     assert r.status_code == 200, r.text
     return json.dumps(r.json()["model"])
 
@@ -76,7 +90,7 @@ def test_build_returns_model_and_verdict(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["ok"] is True and "may_merge" in body["validation"]
-    assert body["model"]["spec"]["nodeTypes"]          # the fixed spec was injected
+    assert body["model"]["spec"]["nodeTypes"]  # the fixed spec was injected
 
 
 def test_build_malformed_is_422_with_the_schema_reason(client: TestClient) -> None:
@@ -93,8 +107,9 @@ def test_build_unknown_type_is_a_finding_not_a_structural_failure(client: TestCl
     The two kinds of failure must stay distinct over HTTP exactly as they are in the
     tools: a host fixes a 422 and re-sends; a 200 with a blocking finding is the
     design's verdict."""
-    r = client.post("/v1/build", json={"nodes": [{"id": "x", "type": "nope", "name": "X"}]},
-                    headers=AUTH)
+    r = client.post(
+        "/v1/build", json={"nodes": [{"id": "x", "type": "nope", "name": "X"}]}, headers=AUTH
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["ok"] is True and body["validation"]["may_merge"] is False
@@ -147,7 +162,8 @@ def test_catalog_without_leanix_is_503(client: TestClient, monkeypatch: pytest.M
 
 # ── audit ─────────────────────────────────────────────────────────────────────
 def test_every_call_leaves_one_audit_line_without_the_token(
-    client: TestClient, caplog: pytest.LogCaptureFixture,
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
         client.get("/v1/contract", headers=AUTH)
@@ -155,11 +171,12 @@ def test_every_call_leaves_one_audit_line_without_the_token(
     assert len(lines) == 1
     entry = json.loads(lines[0])
     assert entry["path"] == "/v1/contract" and entry["status"] == 200
-    assert "caller" in entry and TOKEN not in lines[0]     # never log the secret
+    assert "caller" in entry and TOKEN not in lines[0]  # never log the secret
 
 
 def test_audit_caller_is_who_called_not_who_is_configured(
-    client: TestClient, caplog: pytest.LogCaptureFixture,
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A wrong token must not be logged under the legitimate caller's id.
 

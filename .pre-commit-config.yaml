@@ -38,6 +38,12 @@ repos:
         language: system
         pass_filenames: false
         types: [python]
+      - id: ruff-format
+        name: ruff format --check src/ tests/
+        entry: ruff format --check src/ tests/
+        language: system
+        pass_filenames: false
+        types: [python]
       - id: mypy
         name: mypy --strict
         entry: mypy

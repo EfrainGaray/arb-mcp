@@ -4,6 +4,7 @@ This is the only thing in the whole system allowed to block a merge. It is a
 pure function of the model: same model in, same findings out, no clock, no
 network, no model weights.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -28,9 +29,7 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
     # pass a bank's gate. This rule lives here, in the audited facade, not in the
     # vendored engine.
     if not model.get("nodes"):
-        findings.append(
-            Finding(Severity.ERROR, "model.empty", "The model declares no elements.")
-        )
+        findings.append(Finding(Severity.ERROR, "model.empty", "The model declares no elements."))
 
     # Integrity the JSON Schema cannot express: every id unique, every relation
     # endpoint an element that exists. Without these a dangling relation reads as
@@ -60,9 +59,12 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
         for n in nodes:
             if node_types and n.get("type") not in node_types:
                 findings.append(
-                    Finding(Severity.ERROR, "model.type.undeclared",
-                            f'The element "{n["id"]}" has type "{n.get("type")}", which '
-                            f'the spec does not declare.')
+                    Finding(
+                        Severity.ERROR,
+                        "model.type.undeclared",
+                        f'The element "{n["id"]}" has type "{n.get("type")}", which '
+                        f"the spec does not declare.",
+                    )
                 )
             _check_types(n.get("nodes", []))
 
@@ -72,13 +74,19 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
             t = rel.get("type")
             if t is not None and t not in rel_types:
                 findings.append(
-                    Finding(Severity.ERROR, "model.relation.type.undeclared",
-                            f'The relation {rel.get("from")} -> {rel.get("to")} has type '
-                            f'"{t}", which the spec does not declare.')
+                    Finding(
+                        Severity.ERROR,
+                        "model.relation.type.undeclared",
+                        f"The relation {rel.get('from')} -> {rel.get('to')} has type "
+                        f'"{t}", which the spec does not declare.',
+                    )
                 )
     findings.extend(
-        Finding(Severity.ERROR, "model.id.duplicate",
-                f'The id "{dup}" is declared by more than one element.')
+        Finding(
+            Severity.ERROR,
+            "model.id.duplicate",
+            f'The id "{dup}" is declared by more than one element.',
+        )
         for dup in sorted({i for i in ids if ids.count(i) > 1})
     )
     for rel in model.get("relations", []):
@@ -88,13 +96,14 @@ def lint(model: dict[str, Any], *, include_implied: bool = False) -> list[Findin
             ref = rel.get(end)
             if ref not in present:
                 findings.append(
-                    Finding(Severity.ERROR, "model.relation.endpoint",
-                            f'A relation names {end} "{ref}", which is not an element '
-                            f'in the model.')
+                    Finding(
+                        Severity.ERROR,
+                        "model.relation.endpoint",
+                        f'A relation names {end} "{ref}", which is not an element in the model.',
+                    )
                 )
 
     findings += [
-        Finding(Severity(sev), rule, message)
-        for sev, rule, message in inspections.inspect(subject)
+        Finding(Severity(sev), rule, message) for sev, rule, message in inspections.inspect(subject)
     ]
     return findings

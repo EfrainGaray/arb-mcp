@@ -3,6 +3,7 @@
 Pure orchestration over the domain — no I/O, no framework. The transport
 adapters (stdio, HTTP) call this; they never touch the linter directly.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

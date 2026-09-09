@@ -7,6 +7,7 @@ types, hold the result to the schema, and return the model with its validation
 report. A malformed draft raises ``ModelError`` with the exact reason, which is
 the signal the agent uses to fix its next attempt.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,9 +18,7 @@ from typing import Any
 from ..domain import loading
 from .validate_model import ValidationReport, validate_model
 
-C4_SPEC: dict[str, Any] = json.loads(
-    (files("arb_mcp.domain.specs") / "c4.json").read_text("utf-8")
-)
+C4_SPEC: dict[str, Any] = json.loads((files("arb_mcp.domain.specs") / "c4.json").read_text("utf-8"))
 
 
 @dataclass(frozen=True, slots=True)

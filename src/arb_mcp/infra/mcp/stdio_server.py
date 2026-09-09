@@ -6,6 +6,7 @@ agent supplies the thinking; these tools supply the ground truth.
 
 The HTTP/SSE adapter (auth + audit, for CI) will share the exact same use cases.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,11 +52,13 @@ def build_model_tool(
     try:
         built = build_model(nodes, relations or [], name=name)
     except ModelError as exc:
-        return json.dumps({"ok": False, "error": "invalid_model", "detail": str(exc)},
-                          ensure_ascii=False)
+        return json.dumps(
+            {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
+        )
     return json.dumps(
         {"ok": True, "model": built.model, "validation": built.report.to_dict()},
-        ensure_ascii=False, indent=2,
+        ensure_ascii=False,
+        indent=2,
     )
 
 
@@ -71,8 +74,9 @@ def validate_model(source: str, include_implied: bool = False) -> str:
     try:
         report = validate_source(source, include_implied=include_implied)
     except ModelError as exc:
-        return json.dumps({"may_merge": False, "error": "invalid_model", "detail": str(exc)},
-                          ensure_ascii=False)
+        return json.dumps(
+            {"may_merge": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
+        )
     return json.dumps(report.to_dict(), ensure_ascii=False, indent=2)
 
 
@@ -87,11 +91,13 @@ def convert_model(source: str, to: str = "drawio") -> str:
     try:
         return convert_source(source, to)
     except ModelError as exc:
-        return json.dumps({"ok": False, "error": "invalid_model", "detail": str(exc)},
-                          ensure_ascii=False)
+        return json.dumps(
+            {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
+        )
     except ValueError as exc:
-        return json.dumps({"ok": False, "error": str(exc), "formats": list(FORMATS)},
-                          ensure_ascii=False)
+        return json.dumps(
+            {"ok": False, "error": str(exc), "formats": list(FORMATS)}, ensure_ascii=False
+        )
 
 
 @mcp.tool()
@@ -108,11 +114,13 @@ def check_catalog(source: str) -> str:
         model = loading.load(source)
         report = _check_catalog(model, from_env())
     except ModelError as exc:
-        return json.dumps({"ok": False, "error": "invalid_model", "detail": str(exc)},
-                          ensure_ascii=False)
+        return json.dumps(
+            {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
+        )
     except RuntimeError as exc:
-        return json.dumps({"ok": False, "error": "catalog_unavailable", "detail": str(exc)},
-                          ensure_ascii=False)
+        return json.dumps(
+            {"ok": False, "error": "catalog_unavailable", "detail": str(exc)}, ensure_ascii=False
+        )
     return json.dumps({"ok": True, **report.to_dict()}, ensure_ascii=False, indent=2)
 
 

@@ -5,6 +5,7 @@ diagram and its verdict cannot drift. drawio is emitted as SEPARATE C4 views
 (C1, one C2 per system, one C3 per container) — never one file with tabs —
 because C4 is a set of diagrams, not a canvas.
 """
+
 from __future__ import annotations
 
 import json

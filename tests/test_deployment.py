@@ -1,4 +1,5 @@
 """Deployment view: arbitrary-depth nesting, no dangling endpoints."""
+
 from xml.etree import ElementTree as ET
 
 from arb_mcp.application.convert_model import drawio_views
@@ -10,7 +11,8 @@ DEP = load(open("tests/fixtures/despliegue.json").read())
 def _vids(xml):
     r = ET.fromstring(xml)
     return {o.get("id") for o in r.iter("object")} | {
-        c.get("id") for c in r.iter("mxCell") if c.get("vertex") == "1" and c.get("id")}
+        c.get("id") for c in r.iter("mxCell") if c.get("vertex") == "1" and c.get("id")
+    }
 
 
 def test_deployment_is_a_single_flat_view_labelled_deployment():
