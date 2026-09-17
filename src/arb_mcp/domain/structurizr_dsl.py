@@ -1,22 +1,23 @@
-"""Parse a Structurizr DSL workspace into the canonical wire form.
+"""Parse a Structurizr DSL workspace into a typed canonical model.
 
 The test of whether a new format is worth anything is not that it looks nice,
 but that it absorbs what already exists. This reads Structurizr's DSL and
 honestly reports what it could NOT bring over, instead of hiding it.
 
 Structurizr's nine fixed types become a declared spec: they stop being the
-language and become configuration. The output is a typed ``Model`` on purpose
-— ``loading`` calls ``to_dict()`` on it and holds it to the schema before it
-becomes a ``Model``, the same gate every other input passes.
+language and become configuration.  The parser builds typed ``Node``,
+``Relation``, and ``View`` objects directly; ``loading`` calls ``to_dict()``
+on the resulting ``Model`` and holds it to the normative schema — the same
+gate every other input passes.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Any
 
-from .model import Model
+from .model import Inside, Model, Node, Relation, Spec, View
 
 TYPES = {
     "person": "person",
@@ -45,6 +46,9 @@ SPEC: dict[str, Any] = {
     },
 }
 
+# Parsed once at import; every call to parse() reuses the same typed Spec.
+_SPEC: Spec = Spec.from_dict(SPEC)
+
 _VIEW = re.compile(r"^(systemContext|container|component|dynamic|deployment)\s+(\S+)\s+(.*)")
 _ELEMENT = re.compile(r"^(?:(\w+)\s*=\s*)?(\w+)\s+(\".*)")
 _RELATION = re.compile(r"^(\S+)\s*->\s*(\S+)\s*(.*)")
@@ -67,19 +71,32 @@ def _slot(c: list[str], i: int) -> str:
     return c[i] if len(c) > i else ""
 
 
+@dataclass
+class _Open:
+    """An element opened with ``{``: its typed node and the children accumulated so far."""
+
+    node: Node
+    children: list[Node] = field(default_factory=list)
+
+
 class _Parser:
     """Line-by-line state machine: which section we are in, which elements are
-    open, how deep inside a view block. One method per construct."""
+    open, how deep inside a view block.  One method per construct.
+
+    The stack holds ``_Open`` entries for every element opened with ``{``.
+    On ``}``, the element is finalised with its children and added to its parent.
+    All nodes, relations, and views are typed from the moment of construction.
+    """
 
     def __init__(self) -> None:
         self.lost: list[str] = []
-        self.nodes: list[dict[str, Any]] = []
-        self.relations: list[dict[str, Any]] = []
-        self.views: list[dict[str, Any]] = []
-        self.stack: list[dict[str, Any]] = []  # open nodes
+        self.nodes: list[Node] = []
+        self.relations: list[Relation] = []
+        self.views: list[View] = []
+        self.stack: list[_Open] = []  # open typed nodes
         self.section: str | None = None
         self.view_depth = 0
-        self.root: dict[str, Any] = {"name": "unnamed"}
+        self.root: dict[str, str] = {"name": "unnamed"}
 
     def feed(self, line: str) -> None:
         if not line or line.startswith(("//", "#")):
@@ -107,7 +124,13 @@ class _Parser:
         if self.view_depth:
             self.view_depth -= 1
         elif self.stack:
-            self.stack.pop()
+            open_item = self.stack.pop()
+            # Finalise: attach children collected while the node was open.
+            finalised = replace(open_item.node, nodes=tuple(open_item.children))
+            if self.stack:
+                self.stack[-1].children.append(finalised)
+            else:
+                self.nodes.append(finalised)
         elif self.section:
             self.section = None
 
@@ -117,7 +140,7 @@ class _Parser:
             c = _strings(m.group(3))
             title = c[0] if c else m.group(2)
             self.views.append(
-                {"id": _ident(title), "title": title, "include": [{"inside": _ident(m.group(2))}]}
+                View(id=_ident(title), title=title, include=(Inside(_ident(m.group(2))),))
             )
             if line.endswith("{"):
                 self.view_depth += 1
@@ -136,20 +159,20 @@ class _Parser:
             return False
         var, type_ = m.group(1), TYPES[m.group(2)]
         c = _strings(m.group(3))
-        n: dict[str, Any] = {
-            "id": _ident(var or (c[0] if c else type_)),
-            "type": type_,
-            "name": c[0] if c else "?",
-        }
-        if _slot(c, 1):
-            n["description"] = c[1]
-        if _slot(c, 2):
-            n["technology"] = c[2]
-        if len(c) > _TAGS_SLOT:
-            n["tags"] = [x.strip() for x in c[_TAGS_SLOT].split(",")]
-        (self.stack[-1].setdefault("nodes", []) if self.stack else self.nodes).append(n)
+        node = Node(
+            id=_ident(var or (c[0] if c else type_)),
+            type=type_,
+            name=c[0] if c else "?",
+            description=_slot(c, 1),
+            technology=_slot(c, 2),
+            tags=tuple(x.strip() for x in c[_TAGS_SLOT].split(",")) if len(c) > _TAGS_SLOT else (),
+        )
         if line.endswith("{"):
-            self.stack.append(n)
+            self.stack.append(_Open(node))
+        elif self.stack:
+            self.stack[-1].children.append(node)
+        else:
+            self.nodes.append(node)
         return True
 
     def _relation(self, line: str) -> bool:
@@ -157,12 +180,15 @@ class _Parser:
         if not m:
             return False
         c = _strings(m.group(3))
-        r: dict[str, Any] = {"from": _ident(m.group(1)), "to": _ident(m.group(2)), "type": "uses"}
-        if _slot(c, 0):
-            r["description"] = c[0]
-        if _slot(c, 1):
-            r["technology"] = c[1]
-        self.relations.append(r)
+        self.relations.append(
+            Relation(
+                source=_ident(m.group(1)),
+                target=_ident(m.group(2)),
+                type="uses",
+                description=_slot(c, 0),
+                technology=_slot(c, 1),
+            )
+        )
         return True
 
     def _property(self, line: str) -> bool:
@@ -170,20 +196,25 @@ class _Parser:
             return False
         m = _TAGS.match(line)
         if m:
-            self.stack[-1].setdefault("tags", []).extend(x.strip() for x in _strings(m.group(1)))
+            extra = tuple(x.strip() for x in _strings(m.group(1)))
+            open_item = self.stack[-1]
+            open_item.node = replace(open_item.node, tags=open_item.node.tags + extra)
             return True
         if _LOST_PROPERTY.match(line):
             self.lost.append(f"element property: {line[:40]}")
             return True
         return False
 
-    def model(self) -> dict[str, Any]:
-        out: dict[str, Any] = {"version": "1.0", **self.root, "spec": SPEC, "nodes": self.nodes}
-        if self.relations:
-            out["relations"] = self.relations
-        if self.views:
-            out["views"] = self.views
-        return out
+    def model(self) -> Model:
+        return Model(
+            spec=_SPEC,
+            nodes=tuple(self.nodes),
+            relations=tuple(self.relations),
+            views=tuple(self.views),
+            name=self.root.get("name", "unnamed"),
+            description=self.root.get("description", ""),
+            version="1.0",
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,6 +223,9 @@ class Parsed:
 
     ``model`` is the typed canonical model; ``lost`` is every construct the
     parser could not bring over, reported honestly rather than silently dropped.
+    The model is not yet schema-checked here — ``loading.load()`` calls
+    ``to_dict()`` on it and validates it against the normative schema, the same
+    gate every other input passes.
     """
 
     model: Model
@@ -201,12 +235,11 @@ class Parsed:
 def parse(text: str) -> Parsed:
     """Parse ``text`` (Structurizr DSL) and return a typed ``Parsed`` result.
 
-    The model inside ``Parsed`` passes through ``Model.from_dict`` so its
-    fields are typed and frozen. ``loading`` calls ``to_dict()`` on it and
+    ``loading`` calls ``to_dict()`` on the model inside ``Parsed`` and
     validates against the normative schema — the same gate every other input
     passes — before the model reaches any use case.
     """
     p = _Parser()
     for raw in text.splitlines():
         p.feed(raw.strip())
-    return Parsed(model=Model.from_dict(p.model()), lost=tuple(p.lost))
+    return Parsed(model=p.model(), lost=tuple(p.lost))
