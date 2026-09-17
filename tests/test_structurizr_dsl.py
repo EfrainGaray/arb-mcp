@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from arb_mcp.domain import inspections
 from arb_mcp.domain.model import Model
-from arb_mcp.domain.structurizr_dsl import convert
+from arb_mcp.domain.structurizr_dsl import parse
 
 WORKSPACE = """
 workspace "W" "desc" {
@@ -39,17 +39,17 @@ workspace "W" "desc" {
 
 
 def test_tags_from_the_fourth_slot_and_the_tags_line_both_land() -> None:
-    m, _ = convert(WORKSPACE)
-    by_id = {n["id"]: n for n in m["nodes"]}
-    assert by_id["u"]["tags"] == ["external", "vip"]
-    assert by_id["s"]["tags"] == ["core", "critical"]
-    assert by_id["s"]["nodes"][0]["technology"] == "Go"
-    assert m["description"] == "desc"
+    parsed = parse(WORKSPACE)
+    by_id = {n.id: n for n in parsed.model.walk()}
+    assert by_id["u"].tags == ("external", "vip")
+    assert by_id["s"].tags == ("core", "critical")
+    assert by_id["c"].technology == "Go"
+    assert parsed.model.description == "desc"
 
 
 def test_lost_constructs_are_reported_not_hidden() -> None:
-    _, lost = convert(WORKSPACE)
-    kinds = {x.split(":")[0] for x in lost}
+    parsed = parse(WORKSPACE)
+    kinds = {x.split(":")[0] for x in parsed.lost}
     assert kinds == {
         "directive",
         "element property",
@@ -60,9 +60,9 @@ def test_lost_constructs_are_reported_not_hidden() -> None:
 
 
 def test_view_block_depth_does_not_swallow_the_model() -> None:
-    m, _ = convert(WORKSPACE)
-    assert [v["title"] for v in m["views"]] == ["Context"]
-    assert len(m["relations"]) == 1
+    parsed = parse(WORKSPACE)
+    assert [v.title for v in parsed.model.views] == ["Context"]
+    assert len(parsed.model.relations) == 1
 
 
 def test_required_field_may_live_in_properties_or_as_attribute() -> None:
@@ -93,3 +93,27 @@ def test_required_field_may_live_in_properties_or_as_attribute() -> None:
         "model.decision.description",
         "model.decision.status",
     ]
+
+
+def test_nested_children_are_closed_in_order_and_frozen() -> None:
+    """Node objects in the result are frozen; nodes is a tuple in declaration order.
+
+    Note: Node is frozen (FrozenInstanceError on mutation) but not hashable because
+    its ``properties`` field uses MappingProxyType, which does not implement __hash__.
+    """
+    import dataclasses
+
+    parsed = parse(WORKSPACE)
+    sys_node = parsed.model.get("s")
+    assert sys_node is not None
+    # nodes is a tuple (ordered)
+    assert isinstance(sys_node.nodes, tuple)
+    assert len(sys_node.nodes) == 1
+    assert sys_node.nodes[0].id == "c"
+    # Node is frozen: direct attribute assignment raises FrozenInstanceError
+    import pytest
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        sys_node.name = "mutated"  # type: ignore[misc]
+    # lost is a tuple
+    assert isinstance(parsed.lost, tuple)

@@ -29,8 +29,7 @@ def _tuples(findings: list[Finding]) -> list[list[str]]:
 
 def _model(name: str) -> Model:
     if name.endswith(".dsl"):
-        raw, _ = structurizr_dsl.convert((FIX / name).read_text("utf-8"))
-        return Model.from_dict(raw)
+        return structurizr_dsl.parse((FIX / name).read_text("utf-8")).model
     return Model.from_dict(json.loads((FIX / name).read_text("utf-8")))
 
 
@@ -47,6 +46,6 @@ def test_implied_relations_match_vendored_engine(name: str) -> None:
 
 
 def test_structurizr_parse_matches_vendored_engine() -> None:
-    raw, lost = structurizr_dsl.convert((FIX / "simple.dsl").read_text("utf-8"))
-    assert raw == GOLD["simple.dsl"]["model"]
-    assert lost == GOLD["simple.dsl"]["lost"]
+    parsed = structurizr_dsl.parse((FIX / "simple.dsl").read_text("utf-8"))
+    assert parsed.model.to_dict() == GOLD["simple.dsl"]["model"]
+    assert list(parsed.lost) == GOLD["simple.dsl"]["lost"]

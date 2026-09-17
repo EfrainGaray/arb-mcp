@@ -51,7 +51,7 @@ def load(text: str) -> Model:
         if _looks_like_json(text):
             raw = json.loads(text)
         elif _looks_like_structurizr(text):
-            raw, _lost = structurizr_dsl.convert(text)
+            raw = structurizr_dsl.parse(text).model.to_dict()
         else:
             raise ModelError(
                 "unrecognized source: expected canonical JSON ('{') "

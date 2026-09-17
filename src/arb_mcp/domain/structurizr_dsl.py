@@ -5,15 +5,18 @@ but that it absorbs what already exists. This reads Structurizr's DSL and
 honestly reports what it could NOT bring over, instead of hiding it.
 
 Structurizr's nine fixed types become a declared spec: they stop being the
-language and become configuration. The output is the JSON wire form on purpose
-— ``loading`` holds it to the schema before it becomes a ``Model``, the same
-gate every other input passes.
+language and become configuration. The output is a typed ``Model`` on purpose
+— ``loading`` calls ``to_dict()`` on it and holds it to the schema before it
+becomes a ``Model``, the same gate every other input passes.
 """
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any
+
+from .model import Model
 
 TYPES = {
     "person": "person",
@@ -47,6 +50,8 @@ _ELEMENT = re.compile(r"^(?:(\w+)\s*=\s*)?(\w+)\s+(\".*)")
 _RELATION = re.compile(r"^(\S+)\s*->\s*(\S+)\s*(.*)")
 _TAGS = re.compile(r"^tags\s+(.*)")
 _LOST_PROPERTY = re.compile(r"^(description|technology|url|properties|perspectives)\b")
+
+_TAGS_SLOT = 3  # name, description, technology, tags
 
 
 def _ident(s: str) -> str:
@@ -181,12 +186,27 @@ class _Parser:
         return out
 
 
-_TAGS_SLOT = 3  # name, description, technology, tags
+@dataclass(frozen=True, slots=True)
+class Parsed:
+    """The result of parsing a Structurizr DSL workspace.
+
+    ``model`` is the typed canonical model; ``lost`` is every construct the
+    parser could not bring over, reported honestly rather than silently dropped.
+    """
+
+    model: Model
+    lost: tuple[str, ...]
 
 
-def convert(text: str) -> tuple[dict[str, Any], list[str]]:
-    """Return ``(model_dict, lost)``: the wire form, and every construct dropped."""
+def parse(text: str) -> Parsed:
+    """Parse ``text`` (Structurizr DSL) and return a typed ``Parsed`` result.
+
+    The model inside ``Parsed`` passes through ``Model.from_dict`` so its
+    fields are typed and frozen. ``loading`` calls ``to_dict()`` on it and
+    validates against the normative schema — the same gate every other input
+    passes — before the model reaches any use case.
+    """
     p = _Parser()
     for raw in text.splitlines():
         p.feed(raw.strip())
-    return p.model(), p.lost
+    return Parsed(model=Model.from_dict(p.model()), lost=tuple(p.lost))
