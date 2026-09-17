@@ -9,6 +9,7 @@ shrinks any counterexample to the smallest model that breaks a property."""
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -16,7 +17,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from arb_mcp.application.build_model import C4_SPEC
-from arb_mcp.domain import drawio, implied, structurizr
+from arb_mcp.domain import drawio, implied, mermaid, structurizr
 from arb_mcp.domain.findings import MODEL as SUBJECT_MODEL
 from arb_mcp.domain.linter import lint
 from arb_mcp.domain.loading import load
@@ -152,6 +153,57 @@ def test_every_finding_subject_is_addressable(raw: dict[str, Any]) -> None:
             assert "." not in subject, (
                 f"{f.rule!r}: subject {subject!r} is a dotted path, not an id"
             )
+
+
+_MERMAID_LINE_PATTERNS = [
+    re.compile(r"C4Context|C4Container|C4Component"),
+    re.compile(r"\s+title .+"),
+    re.compile(r"\s+(Person|System|System_Ext|Container|Container_Ext|Component)\(.+\)"),
+    re.compile(r"\s+(System_Boundary|Container_Boundary)\(.+\)\s*\{"),
+    re.compile(r"\s+\}"),
+    re.compile(r"\s+Rel\(.+\)"),
+]
+
+
+def _any_pattern(line: str) -> bool:
+    return any(p.fullmatch(line) for p in _MERMAID_LINE_PATTERNS)
+
+
+@settings(max_examples=40, deadline=None)
+@given(c4_model())
+def test_every_accepted_model_exports_to_syntactically_closed_mermaid(
+    raw: dict[str, Any],
+) -> None:
+    """Every Mermaid C4 view is syntactically closed: every line matches a
+    known pattern, braces balance, and every Rel endpoint is declared in the
+    same diagram."""
+    model = load(json.dumps(raw))
+    for view in mermaid.to_c4_views(model):
+        declared: set[str] = set()
+        depth = 0
+        for line in view.text.splitlines():
+            if not line.strip():
+                continue
+            assert _any_pattern(line), f"unrecognised Mermaid line: {line!r}"
+            if line.rstrip().endswith("{"):
+                depth += 1
+                # extract declared id: first token inside the parentheses
+                m = re.search(r"\((\w+),", line)
+                if m:
+                    declared.add(m.group(1))
+            elif line.strip() == "}":
+                depth -= 1
+            else:
+                # non-boundary node or Rel
+                m2 = re.search(r"\((\w+),", line)
+                if m2 and not line.strip().startswith("Rel("):
+                    declared.add(m2.group(1))
+        assert depth == 0, f"unbalanced braces in {view.scope!r} view"
+        # every Rel endpoint must be declared
+        for m3 in re.finditer(r"Rel\((\w+),\s*(\w+),", view.text):
+            src, tgt = m3.group(1), m3.group(2)
+            assert src in declared, f"Rel source {src!r} not declared in {view.scope!r}"
+            assert tgt in declared, f"Rel target {tgt!r} not declared in {view.scope!r}"
 
 
 @settings(max_examples=40, deadline=None)

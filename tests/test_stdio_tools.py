@@ -41,6 +41,16 @@ def test_convert_tool_structurizr_is_text() -> None:
     assert convert_model(DSL, to="structurizr").startswith("workspace")
 
 
+def test_convert_tool_mermaid_is_json_views() -> None:
+    out = json.loads(convert_model(DSL, to="mermaid"))
+    views = out["views"]
+    assert views, "at least one view"
+    assert views[0]["level"] == "C1"
+    assert views[0]["mermaid"].startswith("C4Context")
+    # every view has the mermaid key, not xml
+    assert all("mermaid" in v and "xml" not in v for v in views)
+
+
 def test_catalog_tool_without_env_is_unavailable_not_a_crash(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

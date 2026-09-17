@@ -209,7 +209,7 @@ the same model the linter validated, so a diagram and its verdict cannot drift.
 | name | type | default | semantics |
 |---|---|---|---|
 | `source` | `string` | required | any accepted surface; detected as above. |
-| `to` | `string` | `"drawio"` | target: `drawio` or `structurizr`. |
+| `to` | `string` | `"drawio"` | target: `drawio`, `structurizr`, or `mermaid`. |
 
 **Returns, `to="drawio"`.** JSON with the C4 views as **separate diagrams**, one
 standalone `<mxfile>` each — one C1 (System Context), one C2 per software system,
@@ -232,16 +232,23 @@ C1/C2/C3 views. Types Structurizr has no inline syntax for — a `decision` is a
 there, not an element — are **skipped**; the caller keeps them in the canonical model.
 This direction is lossy for exactly those.
 
+**Returns, `to="mermaid"`.** JSON with the same envelope as `drawio` but with a
+`mermaid` key instead of `xml` per view — the Mermaid C4 diagram text that GitHub
+and GitLab render natively. Requires a C4 model; UML and deployment models are refused
+with an informative error. The scoping (which elements appear at C1/C2/C3, how
+relations are lifted) is shared with the drawio exporter so the two cannot diverge.
+```json
+{ "views": [
+    { "level": "C1", "scope": "system-landscape", "name": "Acme — C1 System Context",
+      "mermaid": "C4Context\n    title Acme — C1 System Context\n    …" },
+    … ] }
+```
+
 **Returns, unknown target.**
 ```json
-{ "ok": false, "error": "unknown format 'png'; known: drawio, structurizr", "formats": ["drawio", "structurizr"] }
+{ "ok": false, "error": "unknown format 'png'; known: drawio, structurizr, mermaid", "formats": ["drawio", "structurizr", "mermaid"] }
 ```
 And `{"ok": false, "error": "invalid_model", …}` if the source does not load.
-
-**Notes.** Sizes and gaps in the drawio output are currently literals inside
-`domain/drawio.py` (210×110, boundary 320) and differ from drawio's palette
-(240×120); they will move to a render profile (audit H3/H4). Layout is the
-exporter's own column placement; the auto-layout of drawio was tried and rejected.
 
 ---
 

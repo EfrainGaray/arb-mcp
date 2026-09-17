@@ -9,7 +9,7 @@ Transport: stdio. A host (Kiro) calls a tool by name with a JSON arguments objec
 - **`describe_contract`** — The contract to build a design against: the C4 spec (allowed node and
 - **`build_model_tool`** — Assemble a canonical model from drafted C4 elements and validate it.
 - **`validate_model`** — Validate a design and report whether it may merge.
-- **`convert_model`** — Export a design to another surface. ``to`` is one of: drawio, structurizr.
+- **`convert_model`** — Export a design to another surface. ``to`` is one of: drawio, structurizr, mermaid.
 - **`check_catalog`** — Reconcile a design against the architecture catalog (LeanIX, the source of
 
 ---
@@ -297,10 +297,11 @@ workspace "Billing" {
 ```json
 {
   "ok": false,
-  "error": "unknown format 'png'; known: drawio, structurizr",
+  "error": "unknown format 'png'; known: drawio, structurizr, mermaid",
   "formats": [
     "drawio",
-    "structurizr"
+    "structurizr",
+    "mermaid"
   ]
 }
 ```

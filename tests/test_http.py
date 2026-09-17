@@ -146,10 +146,19 @@ def test_convert_structurizr_returns_raw_dsl(client: TestClient) -> None:
     assert r.text.lstrip().startswith("workspace")
 
 
+def test_convert_mermaid_returns_separate_views(client: TestClient) -> None:
+    src = _model(client)
+    r = client.post("/v1/convert", json={"source": src, "to": "mermaid"}, headers=AUTH)
+    assert r.status_code == 200
+    views = r.json()["views"]
+    assert [v["level"] for v in views][:2] == ["C1", "C2"]
+    assert all(v["mermaid"].startswith("C4") for v in views)
+
+
 def test_convert_unknown_format_is_400(client: TestClient) -> None:
     src = _model(client)
     r = client.post("/v1/convert", json={"source": src, "to": "png"}, headers=AUTH)
-    assert r.status_code == 400 and r.json()["formats"] == ["drawio", "structurizr"]
+    assert r.status_code == 400 and r.json()["formats"] == ["drawio", "structurizr", "mermaid"]
 
 
 def test_catalog_without_leanix_is_503(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:

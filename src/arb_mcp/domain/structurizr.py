@@ -12,6 +12,7 @@ caller keeps them in the canonical model regardless.
 
 from __future__ import annotations
 
+from ._text import fold_quotes
 from .model import Model, Node
 
 _C4_ELEMENT = {"person", "softwareSystem", "container", "component"}
@@ -19,10 +20,9 @@ _WITH_TECH = {"container", "component"}
 
 
 def _q(text: str) -> str:
-    # Structurizr DSL has no escape for a double quote inside a string, so a name
-    # carrying one would silently corrupt on reload. Fold it to an apostrophe:
-    # lossy but legible and guaranteed to round-trip.
-    return '"' + str(text).replace('"', "'").replace("\n", " ").replace("\r", " ") + '"'
+    # Structurizr DSL has no escape for a double quote inside a string — fold
+    # via the shared utility so the rule stays in one place.
+    return '"' + fold_quotes(text) + '"'
 
 
 def _element(node: Node, depth: int, lines: list[str]) -> None:

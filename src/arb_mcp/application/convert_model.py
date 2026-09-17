@@ -11,10 +11,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ..domain import drawio, loading, structurizr
+from ..domain import drawio, loading, mermaid, structurizr
 from ..domain.model import Model
 
-FORMATS = ("drawio", "structurizr")
+FORMATS = ("drawio", "structurizr", "mermaid")
 
 
 def drawio_views(model: Model) -> list[dict[str, Any]]:
@@ -23,12 +23,22 @@ def drawio_views(model: Model) -> list[dict[str, Any]]:
 
 
 def convert_model(model: Model, fmt: str) -> str:
-    """Export ``model`` as ``fmt``. For drawio, returns a JSON object with the
-    list of separate C4 views."""
+    """Export ``model`` as ``fmt``.
+
+    - ``drawio``      JSON object with the list of separate C4 views (C1/C2/C3).
+    - ``structurizr`` Raw Structurizr DSL text.
+    - ``mermaid``     JSON object with the list of Mermaid C4 views (C4 models only).
+    """
     if fmt == "drawio":
         return json.dumps({"views": drawio_views(model)}, ensure_ascii=False, indent=2)
     if fmt == "structurizr":
         return structurizr.to_structurizr(model)
+    if fmt == "mermaid":
+        return json.dumps(
+            {"views": [d.to_dict() for d in mermaid.to_c4_views(model)]},
+            ensure_ascii=False,
+            indent=2,
+        )
     raise ValueError(f"unknown format {fmt!r}; known: {', '.join(FORMATS)}")
 
 

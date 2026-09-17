@@ -82,11 +82,12 @@ def validate_model(source: str, include_implied: bool = False) -> str:
 
 @mcp.tool()
 def convert_model(source: str, to: str = "drawio") -> str:
-    """Export a design to another surface. ``to`` is one of: drawio, structurizr.
+    """Export a design to another surface. ``to`` is one of: drawio, structurizr, mermaid.
 
     ``source`` is a design in any accepted surface; the format is detected.
-    drawio comes back as SEPARATE C4 views (one C1, one C2 per system, one C3
-    per container), never tabbed. This is the Structurizr-DSL-to-drawio path.
+    drawio and mermaid come back as JSON with separate C4 views (one C1, one C2
+    per system, one C3 per container), never tabbed.  structurizr returns the
+    raw DSL text.  mermaid requires a C4 model.
     """
     try:
         return convert_source(source, to)
