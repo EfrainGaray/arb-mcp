@@ -12,8 +12,19 @@ they did before the package split.
 
 from __future__ import annotations
 
+from ..model import Model
+from ..render import RenderProfile
 from .c4 import to_c4_views
 from .cells import Diagram
-from .flat import to_views
+from .flat import _view_flat
+
+
+def to_views(model: Model, profile: RenderProfile | None = None) -> list[Diagram]:
+    """Dispatch by notation: C4 models get the separate C1/C2/C3 views; any
+    other spec (UML use cases, etc.) gets a single flat diagram."""
+    if model.is_c4:
+        return to_c4_views(model, profile)
+    return [_view_flat(model, profile or RenderProfile.load("generic"))]
+
 
 __all__ = ["Diagram", "to_c4_views", "to_views"]

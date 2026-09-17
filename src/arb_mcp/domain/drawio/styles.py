@@ -62,7 +62,7 @@ UML_BOUNDARY = (
     "align=center;fillColor=none;strokeColor=#666666;container=1;collapsible=0;"
 )
 
-# C4 placeholder-label metadata used by _c4_vertex.
+# C4 placeholder-label metadata used by c4_vertex.
 C4_TYPE_LABEL: dict[str, str] = {
     "person": "Person",
     "softwareSystem": "Software System",

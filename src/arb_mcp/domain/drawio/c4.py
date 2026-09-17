@@ -8,39 +8,13 @@ C4View that already answers "what" (scope, externals, edges).
 from __future__ import annotations
 
 from ..c4_views import C4View
-from ..c4_views import c4_views as _scoped_views
+from ..c4_views import c4_views as scoped_views
 from ..layout import Box, Resolved
-from ..layout import resolve as _resolve
-from ..model import All, Inside, Layout, Model, Node
+from ..model import Model, Node
 from ..render import RenderProfile
 from .cells import Diagram, c4_vertex, edges, label, mxfile, vertex
+from .placing import cell_of, layout_for, place
 from .styles import BOUNDARY, EXTERNAL, STYLE
-
-
-# ─── placement helpers (also used by flat.py) ─────────────────────────────────
-def layout_for(model: Model, focus: str | None) -> Layout | None:
-    """The authored layout of the view over ``focus`` (``None`` = the landscape)."""
-    for v in model.views:
-        if v.layout is None:
-            continue
-        for q in v.include:
-            if focus is None and isinstance(q, All):
-                return v.layout
-            if isinstance(q, Inside) and q.node == focus:
-                return v.layout
-    return None
-
-
-def place(boxes: list[Box], layout: Layout | None, profile: RenderProfile) -> Resolved:
-    return _resolve(tuple(boxes), layout, profile.grid)
-
-
-def cell_of(placed: Resolved, node_id: str) -> tuple[int, int, int, int, str]:
-    """x, y, w, h and the drawio parent id of a placed node."""
-    p = placed.get(node_id)
-    if p is None:
-        return 0, 0, 0, 0, "1"
-    return p.x, p.y, p.w, p.h, p.parent or "1"
 
 
 # ─── C4-only helpers (private: not used outside this module) ──────────────────
@@ -81,9 +55,10 @@ def _view_c1(model: Model, profile: RenderProfile, view: C4View) -> Diagram:
     )
 
 
-def _view_c2(model: Model, profile: RenderProfile, view: C4View) -> Diagram:
+def _view_focused(model: Model, profile: RenderProfile, view: C4View) -> Diagram:
+    """C2 or C3: focus wrapped in a boundary, inside elements + externals placed."""
     if view.focus is None:
-        raise ValueError("C2 view requires a focus node")
+        raise ValueError(f"{view.level} view requires a focus node")
     focus = view.focus
     lyt = layout_for(model, focus.id)
     boxes = [Box(focus.id, None, profile.boundary_size)]
@@ -101,31 +76,7 @@ def _view_c2(model: Model, profile: RenderProfile, view: C4View) -> Diagram:
         level=view.level,
         scope=view.scope,
         name=view.name,
-        xml=mxfile(f"C2 {focus.name}", cells),
-    )
-
-
-def _view_c3(model: Model, profile: RenderProfile, view: C4View) -> Diagram:
-    if view.focus is None:
-        raise ValueError("C3 view requires a focus node")
-    focus = view.focus
-    lyt = layout_for(model, focus.id)
-    boxes = [Box(focus.id, None, profile.boundary_size)]
-    boxes += [Box(c.id, focus.id, profile.size_of(c.type)) for c in view.inside]
-    boxes += [Box(e.id, None, profile.size_of(e.type)) for e in view.externals]
-    placed = place(boxes, lyt, profile)
-    cells: list[str] = []
-    _emit_boundary(placed, focus, cells)
-    for c in view.inside:
-        _emit_c4(placed, c, STYLE[c.type], cells)
-    for e in view.externals:
-        _emit_c4(placed, e, _external_style(e), cells)
-    cells += edges([(e.source, e.target, e.relation) for e in view.edges])
-    return Diagram(
-        level=view.level,
-        scope=view.scope,
-        name=view.name,
-        xml=mxfile(f"C3 {focus.name}", cells),
+        xml=mxfile(f"{view.level} {focus.name}", cells),
     )
 
 
@@ -136,11 +87,9 @@ def to_c4_views(model: Model, profile: RenderProfile | None = None) -> list[Diag
     cannot diverge."""
     prof = profile or RenderProfile.load("c4")
     result: list[Diagram] = []
-    for view in _scoped_views(model):
+    for view in scoped_views(model):
         if view.level == "C1":
             result.append(_view_c1(model, prof, view))
-        elif view.level == "C2":
-            result.append(_view_c2(model, prof, view))
         else:
-            result.append(_view_c3(model, prof, view))
+            result.append(_view_focused(model, prof, view))
     return result

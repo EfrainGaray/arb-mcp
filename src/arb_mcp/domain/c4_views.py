@@ -50,12 +50,12 @@ class C4View:
         return "system-landscape" if self.focus is None else self.focus.id
 
 
-# ─────────────────────────── internal helpers ───────────────────────────
-def _resolved_edges(
+# ─────────────────────────── helpers ────────────────────────────────────
+def resolved_edges(
     model: Model, resolve: Callable[[str], str | None]
 ) -> list[tuple[str, str, Relation]]:
     """Every written relation collapsed to its visible endpoints, deduped by
-    pair.  Both exporters call this through c4_views so they cannot diverge."""
+    pair.  Both exporters call this so they cannot diverge on edge resolution."""
     seen: set[tuple[str, str]] = set()
     out: list[tuple[str, str, Relation]] = []
     for rel in model.written_relations():
@@ -95,7 +95,7 @@ def context(model: Model) -> C4View:
         t = model.top_of(nid)
         return t if t in top_ids else None
 
-    pairs = _resolved_edges(model, resolve_end)
+    pairs = resolved_edges(model, resolve_end)
     return C4View(
         level="C1",
         focus=None,
@@ -119,7 +119,7 @@ def containers(model: Model, system: Node) -> C4View:
         inside = model.lift_to(nid, container_ids)
         return inside if inside is not None else model.top_of(nid)
 
-    pairs = _resolved_edges(model, resolve_end)
+    pairs = resolved_edges(model, resolve_end)
     ext_nodes = _ext_nodes(model, pairs, sid, container_ids)
     return C4View(
         level="C2",
@@ -157,7 +157,7 @@ def components(model: Model, container: Node) -> C4View:
             cur = p
         return None
 
-    pairs = _resolved_edges(model, resolve_end)
+    pairs = resolved_edges(model, resolve_end)
     ext_nodes = _ext_nodes(model, pairs, cid, comp_ids)
     return C4View(
         level="C3",
