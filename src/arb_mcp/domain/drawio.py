@@ -213,9 +213,6 @@ def _edges(pairs: list[tuple[str, str, Relation]]) -> list[str]:
 
 
 # ─────────────────────────── placing a view ───────────────────────────
-_VIRTUAL = "_outside"  # an undrawn group: the externals of a C2/C3, stacked beside the focus
-
-
 def _layout_for(model: Model, focus: str | None) -> Layout | None:
     """The authored layout of the view over ``focus`` (``None`` = the landscape)."""
     for v in model.views:
@@ -234,15 +231,10 @@ def _place(boxes: list[Box], layout: Layout | None, profile: RenderProfile) -> R
 
 
 def _cell_of(placed: Resolved, node_id: str) -> tuple[int, int, int, int, str]:
-    """x, y, w, h and the drawio parent id of a placed node. A child of the
-    virtual group is lifted onto the canvas by the group's own offset."""
+    """x, y, w, h and the drawio parent id of a placed node."""
     p = placed.get(node_id)
     if p is None:
         return 0, 0, 0, 0, "1"
-    if p.parent == _VIRTUAL:
-        g = placed.get(_VIRTUAL)
-        gx, gy = (g.x, g.y) if g else (0, 0)
-        return gx + p.x, gy + p.y, p.w, p.h, "1"
     return p.x, p.y, p.w, p.h, p.parent or "1"
 
 
@@ -317,13 +309,7 @@ def _focused(
     layout = _layout_for(model, focus.id)
     boxes = [Box(focus.id, None, profile.boundary_size)]
     boxes += [Box(c.id, focus.id, profile.size_of(c.type)) for c in inside]
-    if layout is None and externals:
-        # No authored cells: stack the externals in a column beside the boundary,
-        # inside an undrawn group so the resolver keeps them off the boundary's row.
-        boxes.append(Box(_VIRTUAL, None, (0, 0)))
-        boxes += [Box(e.id, _VIRTUAL, profile.size_of(e.type)) for e in externals]
-    else:
-        boxes += [Box(e.id, None, profile.size_of(e.type)) for e in externals]
+    boxes += [Box(e.id, None, profile.size_of(e.type)) for e in externals]
     placed = _place(boxes, layout, profile)
     cells: list[str] = []
     _emit_boundary(placed, focus, cells)

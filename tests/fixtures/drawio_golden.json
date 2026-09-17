@@ -9,12 +9,12 @@
     "level": "C2",
     "scope": "agatha",
     "name": "Agatha — C2 Containers",
-    "xml_sha256": "86feba270775751739a99f56aee4dc995fbbeabee5ee4a955f65644ce2b8375b"
+    "xml_sha256": "d9224390adc03ae134d74164f0fe4f69da4e946fece36e465341e49a5f48629b"
   },
   "C3:core": {
     "level": "C3",
     "scope": "core",
     "name": "Núcleo hexagonal — C3 Components",
-    "xml_sha256": "d8b0e54ae33fd96765ea7ebe46136d01acbbf75b5d94617d39e0e1f24d0724a1"
+    "xml_sha256": "75d414f402c306b6c383ff65b2857759c39d075788184b668b2e50aeb3c26e97"
   }
 }
