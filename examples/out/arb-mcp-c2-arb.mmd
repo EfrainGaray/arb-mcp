@@ -1,0 +1,19 @@
+C4Container
+    title arb-mcp — C2 Containers
+    System_Boundary(arb, "arb-mcp") {
+        Container(stdio, "Servidor MCP (stdio)", "Python, MCP SDK", "describe_contract, build_model, validate_model, convert_model y check_catalog, por el protocolo MCP")
+        Container(http, "Adaptador HTTP", "FastAPI", "Los mismos casos de uso tras un bearer token o un JWT del IdP, con id de correlación y una línea de auditoría por petición")
+        Container(aplicacion, "Casos de uso", "Python", "Un caso de uso por herramienta; el catálogo y los modelos de lenguaje entran solo por puertos")
+        Container(dominio, "Dominio", "Python, stdlib", "El modelo tipado, la compuerta determinista y los exportadores. Sin dependencias de framework")
+    }
+    Person(arquitecto, "Arquitecto", "Escribe el diseño y pide el veredicto desde su editor con MCP")
+    Person(pipeline, "Pipeline de CI", "Pide el veredicto en cada merge request")
+    System_Ext(leanix, "SAP LeanIX", "El catálogo de arquitectura de la organización: la fuente de la verdad")
+    System_Ext(idp, "Proveedor de identidad", "Emite y firma los tokens; Keycloak, Ping o Entra")
+    Rel(arquitecto, stdio, "Pide validar y convertir", "MCP")
+    Rel(pipeline, http, "Pide el veredicto del merge", "HTTPS")
+    Rel(stdio, aplicacion, "Invoca el caso de uso", "Llamada en proceso")
+    Rel(http, aplicacion, "Invoca el mismo caso de uso", "Llamada en proceso")
+    Rel(aplicacion, dominio, "Valida y exporta", "Llamada en proceso")
+    Rel(aplicacion, leanix, "Contrasta el catálogo", "GraphQL")
+    Rel(http, idp, "Verifica la firma del token", "JWKS")

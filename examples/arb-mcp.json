@@ -1,0 +1,502 @@
+{
+  "version": "1.0",
+  "name": "arb-mcp",
+  "description": "El MCP que valida arquitectura como código y la exporta a drawio, Structurizr y Mermaid. Este modelo describe al propio arb-mcp, y sus diagramas se generan con él.",
+  "spec": {
+    "nodeTypes": {
+      "person": {
+        "description": "A user of the system",
+        "contains": []
+      },
+      "softwareSystem": {
+        "description": "A software system",
+        "contains": [
+          "container"
+        ]
+      },
+      "container": {
+        "description": "Something deployable",
+        "contains": [
+          "component"
+        ]
+      },
+      "component": {
+        "description": "A part inside a container",
+        "contains": []
+      },
+      "deploymentNode": {
+        "description": "Where something runs"
+      },
+      "infrastructureNode": {
+        "description": "Load balancer, firewall, DNS",
+        "contains": []
+      },
+      "decision": {
+        "description": "Decision record",
+        "contains": [],
+        "requires": [
+          "status"
+        ]
+      }
+    },
+    "relationTypes": {
+      "uses": {},
+      "affects": {
+        "description": "Ties a decision to what it decides",
+        "from": [
+          "decision"
+        ]
+      }
+    }
+  },
+  "nodes": [
+    {
+      "id": "arquitecto",
+      "type": "person",
+      "name": "Arquitecto",
+      "description": "Escribe el diseño y pide el veredicto desde su editor con MCP"
+    },
+    {
+      "id": "pipeline",
+      "type": "person",
+      "name": "Pipeline de CI",
+      "description": "Pide el veredicto en cada merge request"
+    },
+    {
+      "id": "arb",
+      "type": "softwareSystem",
+      "name": "arb-mcp",
+      "description": "Valida el modelo de arquitectura y lo convierte a las notaciones que cada quien lee",
+      "nodes": [
+        {
+          "id": "stdio",
+          "type": "container",
+          "name": "Servidor MCP (stdio)",
+          "description": "describe_contract, build_model, validate_model, convert_model y check_catalog, por el protocolo MCP",
+          "technology": "Python, MCP SDK",
+          "docs": [
+            {
+              "title": "Por qué stdio",
+              "format": "markdown",
+              "content": "El arquitecto trabaja dentro de su editor. El transporte stdio del protocolo MCP lo pone ahí, sin servidor que levantar ni credenciales que administrar en una máquina de escritorio."
+            }
+          ]
+        },
+        {
+          "id": "http",
+          "type": "container",
+          "name": "Adaptador HTTP",
+          "description": "Los mismos casos de uso tras un bearer token o un JWT del IdP, con id de correlación y una línea de auditoría por petición",
+          "technology": "FastAPI",
+          "docs": [
+            {
+              "title": "Por qué también HTTP",
+              "format": "markdown",
+              "content": "La CI no habla stdio. El mismo caso de uso se expone por HTTP tras autenticación, con una línea de auditoría por petición y un id de correlación que une esa línea con la de la herramienta."
+            }
+          ]
+        },
+        {
+          "id": "aplicacion",
+          "type": "container",
+          "name": "Casos de uso",
+          "description": "Un caso de uso por herramienta; el catálogo y los modelos de lenguaje entran solo por puertos",
+          "technology": "Python",
+          "docs": [
+            {
+              "title": "Por qué una capa propia",
+              "format": "markdown",
+              "content": "Separa el qué del cómo: los casos de uso no saben si los llamó un editor o una CI, y lo de afuera —catálogo, modelos de lenguaje— entra solo por puertos, de modo que una caída del catálogo nunca puede bloquear un merge."
+            }
+          ]
+        },
+        {
+          "id": "dominio",
+          "type": "container",
+          "name": "Dominio",
+          "description": "El modelo tipado, la compuerta determinista y los exportadores. Sin dependencias de framework",
+          "technology": "Python, stdlib",
+          "nodes": [
+            {
+              "id": "modelo",
+              "type": "component",
+              "name": "Modelo y esquema",
+              "description": "Model, Node, Relation y el JSON Schema normativo: la forma canónica",
+              "technology": "dataclasses"
+            },
+            {
+              "id": "compuerta",
+              "type": "component",
+              "name": "Compuerta determinista",
+              "description": "Inspecciones y hallazgos con severidad y sujeto; lo único que puede bloquear un merge",
+              "technology": "Python"
+            },
+            {
+              "id": "vistas",
+              "type": "component",
+              "name": "Vistas C4",
+              "description": "Qué se ve en C1, C2 y C3, los externos y la elevación de extremos. Neutral de notación",
+              "technology": "Python"
+            },
+            {
+              "id": "exportadores",
+              "type": "component",
+              "name": "Exportadores",
+              "description": "drawio con estilos C4 nativos, Structurizr DSL y Mermaid",
+              "technology": "Python"
+            }
+          ],
+          "docs": [
+            {
+              "title": "Por qué sin framework",
+              "format": "markdown",
+              "content": "El veredicto tiene que ser reproducible dentro de diez años. El dominio usa solo la biblioteca estándar, así que ninguna actualización de framework puede cambiar lo que la compuerta responde."
+            }
+          ]
+        }
+      ],
+      "docs": [
+        {
+          "title": "Por qué existe",
+          "format": "markdown",
+          "content": "El diseño de arquitectura vive en documentos que nadie puede verificar. arb-mcp toma el modelo como dato, lo somete a una compuerta determinista —lo único que puede bloquear un merge— y lo exporta a la notación que cada lector necesita: drawio para editar, Structurizr para importar, Mermaid para leer en el repositorio."
+        }
+      ]
+    },
+    {
+      "id": "leanix",
+      "type": "softwareSystem",
+      "name": "SAP LeanIX",
+      "description": "El catálogo de arquitectura de la organización: la fuente de la verdad",
+      "technology": "Externo"
+    },
+    {
+      "id": "idp",
+      "type": "softwareSystem",
+      "name": "Proveedor de identidad",
+      "description": "Emite y firma los tokens; Keycloak, Ping o Entra",
+      "technology": "Externo, OIDC"
+    },
+    {
+      "id": "drawio",
+      "type": "softwareSystem",
+      "name": "drawio",
+      "description": "Donde el diagrama exportado se abre y se edita",
+      "technology": "Externo"
+    },
+    {
+      "id": "d-canonico",
+      "type": "decision",
+      "name": "El JSON del esquema es la forma canónica",
+      "description": "El esquema es normativo; drawio, Structurizr y Mermaid son exportaciones sobre el modelo ya validado, nunca fuentes de verdad.",
+      "properties": {
+        "status": "accepted"
+      }
+    },
+    {
+      "id": "d-compuerta",
+      "type": "decision",
+      "name": "Solo lo determinista bloquea",
+      "description": "La validación es la única compuerta; la generación y el contraste con el catálogo son informativos y jamás detienen un merge.",
+      "properties": {
+        "status": "accepted"
+      }
+    },
+    {
+      "id": "d-transportes",
+      "type": "decision",
+      "name": "Dos transportes, un caso de uso",
+      "description": "stdio para el arquitecto y HTTP para la CI, compartiendo los mismos casos de uso para que no puedan divergir.",
+      "properties": {
+        "status": "accepted"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "arquitecto",
+      "to": "stdio",
+      "type": "uses",
+      "description": "Pide validar y convertir",
+      "technology": "MCP"
+    },
+    {
+      "from": "pipeline",
+      "to": "http",
+      "type": "uses",
+      "description": "Pide el veredicto del merge",
+      "technology": "HTTPS"
+    },
+    {
+      "from": "stdio",
+      "to": "aplicacion",
+      "type": "uses",
+      "description": "Invoca el caso de uso",
+      "technology": "Llamada en proceso"
+    },
+    {
+      "from": "http",
+      "to": "aplicacion",
+      "type": "uses",
+      "description": "Invoca el mismo caso de uso",
+      "technology": "Llamada en proceso"
+    },
+    {
+      "from": "aplicacion",
+      "to": "dominio",
+      "type": "uses",
+      "description": "Valida y exporta",
+      "technology": "Llamada en proceso"
+    },
+    {
+      "from": "aplicacion",
+      "to": "leanix",
+      "type": "uses",
+      "description": "Contrasta el catálogo",
+      "technology": "GraphQL"
+    },
+    {
+      "from": "http",
+      "to": "idp",
+      "type": "uses",
+      "description": "Verifica la firma del token",
+      "technology": "JWKS"
+    },
+    {
+      "from": "arquitecto",
+      "to": "drawio",
+      "type": "uses",
+      "description": "Abre y edita el diagrama exportado",
+      "technology": "Escritorio"
+    },
+    {
+      "from": "compuerta",
+      "to": "modelo",
+      "type": "uses",
+      "description": "Inspecciona el modelo tipado",
+      "technology": "Llamada en proceso"
+    },
+    {
+      "from": "exportadores",
+      "to": "vistas",
+      "type": "uses",
+      "description": "Toma el alcance de cada nivel",
+      "technology": "Llamada en proceso"
+    },
+    {
+      "from": "vistas",
+      "to": "modelo",
+      "type": "uses",
+      "description": "Recorre nodos y relaciones",
+      "technology": "Llamada en proceso"
+    },
+    {
+      "from": "d-canonico",
+      "to": "arb",
+      "type": "affects",
+      "description": "Decide",
+      "technology": "ADR"
+    },
+    {
+      "from": "d-canonico",
+      "to": "dominio",
+      "type": "affects",
+      "description": "Decide",
+      "technology": "ADR"
+    },
+    {
+      "from": "d-compuerta",
+      "to": "aplicacion",
+      "type": "affects",
+      "description": "Decide",
+      "technology": "ADR"
+    },
+    {
+      "from": "d-transportes",
+      "to": "stdio",
+      "type": "affects",
+      "description": "Decide",
+      "technology": "ADR"
+    },
+    {
+      "from": "d-transportes",
+      "to": "http",
+      "type": "affects",
+      "description": "Decide",
+      "technology": "ADR"
+    }
+  ],
+  "views": [
+    {
+      "id": "contexto",
+      "title": "Contexto",
+      "include": [
+        "*"
+      ],
+      "description": "Quién usa arb-mcp y con qué sistemas de afuera habla.",
+      "layout": {
+        "direction": "down",
+        "origin": "manual",
+        "placements": [
+          {
+            "node": "arquitecto",
+            "rank": 0,
+            "order": 0
+          },
+          {
+            "node": "pipeline",
+            "rank": 0,
+            "order": 1
+          },
+          {
+            "node": "arb",
+            "rank": 1,
+            "order": 0
+          },
+          {
+            "node": "leanix",
+            "rank": 2,
+            "order": 0
+          },
+          {
+            "node": "idp",
+            "rank": 2,
+            "order": 1
+          },
+          {
+            "node": "drawio",
+            "rank": 2,
+            "order": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "contenedores",
+      "title": "Contenedores",
+      "include": [
+        {
+          "inside": "arb"
+        }
+      ],
+      "description": "Dos transportes, los casos de uso y el dominio.",
+      "layout": {
+        "direction": "right",
+        "origin": "manual",
+        "placements": [
+          {
+            "node": "arquitecto",
+            "rank": 0,
+            "order": 0
+          },
+          {
+            "node": "pipeline",
+            "rank": 0,
+            "order": 1
+          },
+          {
+            "node": "arb",
+            "rank": 1,
+            "order": 0
+          },
+          {
+            "node": "leanix",
+            "rank": 2,
+            "order": 0
+          },
+          {
+            "node": "idp",
+            "rank": 2,
+            "order": 1
+          },
+          {
+            "node": "d-canonico",
+            "rank": 3,
+            "order": 0
+          },
+          {
+            "node": "d-compuerta",
+            "rank": 3,
+            "order": 1
+          },
+          {
+            "node": "d-transportes",
+            "rank": 3,
+            "order": 2
+          },
+          {
+            "node": "stdio",
+            "rank": 0,
+            "order": 0
+          },
+          {
+            "node": "http",
+            "rank": 0,
+            "order": 1
+          },
+          {
+            "node": "aplicacion",
+            "rank": 1,
+            "order": 0
+          },
+          {
+            "node": "dominio",
+            "rank": 2,
+            "order": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "c-dominio",
+      "title": "Componentes · dominio",
+      "include": [
+        {
+          "inside": "dominio"
+        }
+      ],
+      "layout": {
+        "direction": "right",
+        "origin": "manual",
+        "placements": [
+          {
+            "node": "aplicacion",
+            "rank": 0,
+            "order": 0
+          },
+          {
+            "node": "d-canonico",
+            "rank": 0,
+            "order": 1
+          },
+          {
+            "node": "dominio",
+            "rank": 1,
+            "order": 0
+          },
+          {
+            "node": "compuerta",
+            "rank": 0,
+            "order": 0
+          },
+          {
+            "node": "exportadores",
+            "rank": 0,
+            "order": 1
+          },
+          {
+            "node": "modelo",
+            "rank": 1,
+            "order": 0
+          },
+          {
+            "node": "vistas",
+            "rank": 1,
+            "order": 1
+          }
+        ]
+      }
+    }
+  ],
+  "scope": "system"
+}

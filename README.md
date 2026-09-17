@@ -59,6 +59,13 @@ the version or the changelog by hand.
     pip install -e '.[dev]'
     pytest && ruff check src/ && mypy
 
+## Making diagrams, from any agent
+
+Install it, point Claude Code, Codex, Kiro or any MCP host at it, and ask:
+[docs/DIAGRAMS.md](docs/DIAGRAMS.md) is the whole recipe — two calls, and what
+comes back. The C1/C2/C3 views of arb-mcp's own architecture in `examples/out/`
+were produced that way, from `examples/arb-mcp.json`.
+
 ## The tools (how Kiro uses it)
 
 **This MCP has no LLM and calls none.** Kiro does the thinking — it reads the

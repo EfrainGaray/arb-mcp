@@ -1,0 +1,13 @@
+C4Context
+    title arb-mcp — C1 System Context
+    Person(arquitecto, "Arquitecto", "Escribe el diseño y pide el veredicto desde su editor con MCP")
+    Person(pipeline, "Pipeline de CI", "Pide el veredicto en cada merge request")
+    System(arb, "arb-mcp", "Valida el modelo de arquitectura y lo convierte a las notaciones que cada quien lee")
+    System(leanix, "SAP LeanIX", "El catálogo de arquitectura de la organización: la fuente de la verdad")
+    System(idp, "Proveedor de identidad", "Emite y firma los tokens; Keycloak, Ping o Entra")
+    System(drawio, "drawio", "Donde el diagrama exportado se abre y se edita")
+    Rel(arquitecto, arb, "Pide validar y convertir", "MCP")
+    Rel(pipeline, arb, "Pide el veredicto del merge", "HTTPS")
+    Rel(arb, leanix, "Contrasta el catálogo", "GraphQL")
+    Rel(arb, idp, "Verifica la firma del token", "JWKS")
+    Rel(arquitecto, drawio, "Abre y edita el diagrama exportado", "Escritorio")

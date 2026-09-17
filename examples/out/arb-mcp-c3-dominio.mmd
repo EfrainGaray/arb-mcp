@@ -1,0 +1,13 @@
+C4Component
+    title Dominio — C3 Components
+    Container_Boundary(dominio, "Dominio") {
+        Component(modelo, "Modelo y esquema", "dataclasses", "Model, Node, Relation y el JSON Schema normativo: la forma canónica")
+        Component(compuerta, "Compuerta determinista", "Python", "Inspecciones y hallazgos con severidad y sujeto; lo único que puede bloquear un merge")
+        Component(vistas, "Vistas C4", "Python", "Qué se ve en C1, C2 y C3, los externos y la elevación de extremos. Neutral de notación")
+        Component(exportadores, "Exportadores", "Python", "drawio con estilos C4 nativos, Structurizr DSL y Mermaid")
+    }
+    Container_Ext(aplicacion, "Casos de uso", "Python", "Un caso de uso por herramienta; el catálogo y los modelos de lenguaje entran solo por puertos")
+    Rel(aplicacion, dominio, "Valida y exporta", "Llamada en proceso")
+    Rel(compuerta, modelo, "Inspecciona el modelo tipado", "Llamada en proceso")
+    Rel(exportadores, vistas, "Toma el alcance de cada nivel", "Llamada en proceso")
+    Rel(vistas, modelo, "Recorre nodos y relaciones", "Llamada en proceso")

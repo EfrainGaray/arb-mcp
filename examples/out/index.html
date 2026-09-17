@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>arb-mcp · su propia arquitectura</title>
+<style>
+:root { --bg:#fbfbfd; --surface:#fff; --text:#16181d; --muted:#5b6170; --line:#e3e5eb; --link:#0a58ca; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#0a0e16; --surface:#131824; --text:#e8eaf0; --muted:#98a0b3; --line:#232a3a; --link:#7fb2ff; }
+}
+* { box-sizing:border-box }
+body { margin:0; padding:24px 16px 64px; background:var(--bg); color:var(--text);
+  font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { max-width:1100px; margin:0 auto }
+h1 { font-size:clamp(1.5rem,4vw,2.1rem); margin:0 0 .3em; letter-spacing:-.02em }
+h2 { font-size:1.05rem; margin:0 0 .25em; letter-spacing:-.01em }
+p { margin:0 0 .8em; color:var(--muted) }
+.intro { margin-bottom:2.5rem; max-width:62ch }
+section { background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin-bottom:22px; }
+.lienzo { overflow-x:auto; background:#fff; border-radius:8px; padding:12px; margin:.6em 0 }
+.lienzo img { display:block; max-width:100%; height:auto; margin:0 auto }
+.bajada { margin:0; font-size:.86rem }
+a { color:var(--link) }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em;
+  background:color-mix(in srgb, var(--text) 8%, transparent); padding:.1em .35em; border-radius:4px }
+</style></head>
+<body><main>
+<h1>arb-mcp, dibujado por arb-mcp</h1>
+<div class="intro">
+<p>Contexto, contenedores y componentes. El modelo canónico está en
+<code>examples/arb-mcp.json</code> y pasa la compuerta determinista del propio arb-mcp sin
+hallazgos; de ahí salen estas tres vistas en drawio, SVG y Mermaid.</p>
+<p>Los <code>.drawio</code> traen la forma C4 nativa —<code>c4Name</code>, <code>c4Type</code>,
+<code>c4Technology</code>— así que el editor C4 de diagrams.net los abre y los edita como suyos.</p>
+</div>
+  <section>
+    <h2>C1 · Contexto</h2>
+    <p>Quién usa arb-mcp y con qué sistemas de afuera habla.</p>
+    <div class="lienzo"><img src="arb-mcp-c1-system-landscape.svg" alt="C1 · Contexto" loading="lazy"></div>
+    <p class="bajada"><a href="arb-mcp-c1-system-landscape.drawio" download>.drawio</a> · <a href="arb-mcp-c1-system-landscape.svg" download>.svg</a> · <a href="arb-mcp-c1-system-landscape.mmd" download>.mmd</a></p>
+  </section>
+  <section>
+    <h2>C2 · Contenedores</h2>
+    <p>Las cuatro piezas desplegables: dos transportes, los casos de uso y el dominio.</p>
+    <div class="lienzo"><img src="arb-mcp-c2-arb.svg" alt="C2 · Contenedores" loading="lazy"></div>
+    <p class="bajada"><a href="arb-mcp-c2-arb.drawio" download>.drawio</a> · <a href="arb-mcp-c2-arb.svg" download>.svg</a> · <a href="arb-mcp-c2-arb.mmd" download>.mmd</a></p>
+  </section>
+  <section>
+    <h2>C3 · Componentes del dominio</h2>
+    <p>El modelo, la compuerta determinista, las vistas y los exportadores. Sin framework.</p>
+    <div class="lienzo"><img src="arb-mcp-c3-dominio.svg" alt="C3 · Componentes del dominio" loading="lazy"></div>
+    <p class="bajada"><a href="arb-mcp-c3-dominio.drawio" download>.drawio</a> · <a href="arb-mcp-c3-dominio.svg" download>.svg</a> · <a href="arb-mcp-c3-dominio.mmd" download>.mmd</a></p>
+  </section>
+</main></body></html>
