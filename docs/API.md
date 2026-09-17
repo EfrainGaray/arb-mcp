@@ -53,7 +53,7 @@ Kiro calls this first to learn the C4 types and schema it must draft against. No
     }
   },
   "schema": {
-    "$comment": "full JSON Schema draft 2020-12 — 6131 bytes, elided here"
+    "$comment": "full JSON Schema draft 2020-12 — 8772 bytes, elided here"
   }
 }
 ```
@@ -197,12 +197,14 @@ The merge gate. `source` may be canonical JSON or Structurizr DSL — format det
     {
       "severity": "ERROR",
       "rule": "model.softwareSystem.documentation",
+      "subject": "bill",
       "message": "The softwareSystem \"Billing\" holds 1 elements inside, but is not documented.",
       "blocking": true
     },
     {
       "severity": "ERROR",
       "rule": "model.softwareSystem.decisions",
+      "subject": "bill",
       "message": "The softwareSystem \"Billing\" holds elements inside, but no decision backs it.",
       "blocking": true
     }
@@ -215,7 +217,7 @@ The merge gate. `source` may be canonical JSON or Structurizr DSL — format det
 {
   "may_merge": false,
   "error": "invalid_model",
-  "detail": "No terminal matches 'g' in the current parser context, at line 1 col 1\n\ngarbage {{{\n^\nExpected one of: \n\t* MODEL\n"
+  "detail": "unrecognized source: expected canonical JSON ('{') or Structurizr DSL ('workspace')"
 }
 ```
 

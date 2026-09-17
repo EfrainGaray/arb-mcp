@@ -8,9 +8,23 @@ network, no model weights.
 from __future__ import annotations
 
 from . import implied, inspections
-from .findings import Finding, Severity
+from .findings import MODEL, Finding, Severity
 from .model import Model
 from .views import members, named_nodes
+
+
+def _rel_subject(rel: object) -> str:
+    """Canonical subject for a relation finding.
+
+    Uses the authored id when set; falls back to ``"{source}->{target}"``
+    so the subject is always addressable even for inline relations.
+    """
+    rid = getattr(rel, "id", "")
+    if rid:
+        return rid
+    src = getattr(rel, "source", "")
+    tgt = getattr(rel, "target", "")
+    return f"{src}->{tgt}"
 
 
 def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
@@ -25,7 +39,9 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
     # pass a bank's gate. This rule lives here, in the audited facade, not in the
     # vendored engine.
     if not model.nodes:
-        findings.append(Finding(Severity.ERROR, "model.empty", "The model declares no elements."))
+        findings.append(
+            Finding(Severity.ERROR, "model.empty", "The model declares no elements.", subject=MODEL)
+        )
 
     # Integrity the JSON Schema cannot express: every id unique, every relation
     # endpoint an element that exists. Without these a dangling relation reads as
@@ -47,6 +63,7 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                 Severity.ERROR,
                 "model.type.undeclared",
                 f'The element "{n.id}" has type "{n.type}", which the spec does not declare.',
+                subject=n.id,
             )
             for n in model.walk()
             if n.type not in node_types
@@ -58,6 +75,7 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                 "model.relation.type.undeclared",
                 f'The relation {r.source} -> {r.target} has type "{r.type}", which the spec '
                 f"does not declare.",
+                subject=_rel_subject(r),
             )
             for r in model.relations
             if r.type and r.type not in rel_types
@@ -67,6 +85,7 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
             Severity.ERROR,
             "model.id.duplicate",
             f'The id "{dup}" is declared by more than one element.',
+            subject=dup,
         )
         for dup in sorted({i for i in ids if ids.count(i) > 1})
     )
@@ -78,6 +97,7 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                         Severity.ERROR,
                         "model.relation.endpoint",
                         f'A relation names {end} "{ref}", which is not an element in the model.',
+                        subject=_rel_subject(rel),
                     )
                 )
 
@@ -91,6 +111,7 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                     Severity.ERROR,
                     "view.query.node",
                     f'The view "{view.id}" queries "{ref}", which is not an element in the model.',
+                    subject=view.id,
                 )
                 for ref in named_nodes(q)
                 if ref not in model
@@ -101,6 +122,7 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                     Severity.WARNING,
                     "view.empty",
                     f'The view "{view.id}" selects no element.',
+                    subject=view.id,
                 )
             )
 

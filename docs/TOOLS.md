@@ -191,8 +191,11 @@ gets a safe answer — but it should read `error` to tell this from a lint failu
 **Notes.** The facade adds three rules of its own on top of the ported engine —
 `model.empty`, `model.id.duplicate`, `model.relation.endpoint` — because a duplicate
 id silently overwrites a diagram cell and a dangling endpoint cannot be drawn. All
-three are `ERROR`. A finding carries its subject inside `message`; there is no
-separate `subject` field yet (audit M7).
+three are `ERROR`. Every finding carries an addressable `subject` field: the
+element id for element rules, `"{source}->{target}"` for relation rules, the
+view id for view rules, and `""` for model-level rules (`model.empty`,
+`model.scope`). The `subject` is separate from `message`, which uses the
+human-readable name path for readability.
 
 ---
 

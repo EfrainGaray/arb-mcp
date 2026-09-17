@@ -217,3 +217,13 @@ def _same(draft: Draft) -> None:
 def _verdict(draft: Draft, rule: str, verdict: str) -> None:
     hits = [f.severity.value for f in draft.reports[-1].findings if f.rule == rule]
     assert hits == ([] if verdict == "absent" else [verdict])
+
+
+@then(parsers.parse('the finding "{rule}" points at "{subject}"'))
+def _points_at(draft: Draft, rule: str, subject: str) -> None:
+    hits = [f for f in draft.reports[-1].findings if f.rule == rule]
+    assert hits, f"no finding for {rule}"
+    assert any(f.subject == subject for f in hits), (
+        f"no finding for {rule!r} points at {subject!r}; "
+        f"subjects found: {[f.subject for f in hits]}"
+    )

@@ -13,6 +13,7 @@ Feature: The merge gate
     When the design is validated
     Then it may not merge
     And the findings include ERROR "model.container.documentation"
+    And the finding "model.container.documentation" points at "api"
 
   Scenario: The same design validated twice yields the same findings
     Given a software system "Billing" with a container "API" that holds a component "Auth"
@@ -24,6 +25,7 @@ Feature: The merge gate
     And a relation from "User" to "Ghost"
     When the design is validated
     Then the findings include ERROR "model.relation.endpoint"
+    And the finding "model.relation.endpoint" points at "user->ghost"
 
   Scenario: A type the spec does not declare cannot pass the gate
     Given an element "X" of type "microservice"

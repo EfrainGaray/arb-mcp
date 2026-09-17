@@ -17,6 +17,7 @@ from hypothesis import strategies as st
 
 from arb_mcp.application.build_model import C4_SPEC
 from arb_mcp.domain import drawio, implied, structurizr
+from arb_mcp.domain.findings import MODEL as SUBJECT_MODEL
 from arb_mcp.domain.linter import lint
 from arb_mcp.domain.loading import load
 from arb_mcp.domain.model import Model
@@ -117,6 +118,40 @@ def test_structurizr_export_reloads_and_keeps_every_c4_element(raw: dict[str, An
     model = load(json.dumps(raw))
     reloaded = load(structurizr.to_structurizr(model))
     assert {n.id for n in model.walk()} <= {n.id for n in reloaded.walk()}
+
+
+@settings(max_examples=40, deadline=None)
+@given(c4_model())
+def test_every_finding_subject_is_addressable(raw: dict[str, Any]) -> None:
+    """Every finding carries a subject that is addressable: a model element id,
+    a relation 'src->tgt' token, a view id, or '' for model-level rules.
+    No element-rule subject is a dotted name path — that is the trap."""
+    model = load(json.dumps(raw))
+    all_ids = {n.id for n in model.walk()}
+    view_ids = {v.id for v in model.views}
+    model_level = {"model.empty", "model.scope"}
+
+    for f in lint(model, include_implied=True):
+        subject = f.subject
+        if f.rule in model_level:
+            assert subject == SUBJECT_MODEL, f"{f.rule!r}: expected '' got {subject!r}"
+            continue
+        # addressable: model element id, relation token, or view id
+        is_element = subject in all_ids
+        is_relation = (
+            "->" in subject
+            and len(subject.split("->")) == 2
+            and all(isinstance(p, str) for p in subject.split("->"))
+        )
+        is_view = subject in view_ids
+        assert is_element or is_relation or is_view or subject == SUBJECT_MODEL, (
+            f"{f.rule!r}: subject {subject!r} is not addressable"
+        )
+        # element rules must not use dotted name paths (e.g. 'Agatha.Núcleo hexagonal')
+        if f.rule.startswith("model.") and not f.rule.startswith("model.relation."):
+            assert "." not in subject, (
+                f"{f.rule!r}: subject {subject!r} is a dotted path, not an id"
+            )
 
 
 @settings(max_examples=40, deadline=None)

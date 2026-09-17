@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from .findings import Finding, Severity
+from .findings import MODEL, Finding, Severity
 from .model import Model, Node
 
 _ATTRIBUTE_FIELDS = ("description", "technology", "name")
@@ -39,6 +39,20 @@ def _paths(nodes: tuple[Node, ...], prefix: str = "") -> Iterator[tuple[Node, st
         yield from _paths(n.nodes, path)
 
 
+def _rel_subject(rel: object) -> str:
+    """Canonical subject for a relation finding.
+
+    Uses the authored id when set; falls back to ``"{source}->{target}"``
+    so the subject is always addressable even for inline relations.
+    """
+    rid = getattr(rel, "id", "")
+    if rid:
+        return rid
+    src = getattr(rel, "source", "")
+    tgt = getattr(rel, "target", "")
+    return f"{src}->{tgt}"
+
+
 def inspect(model: Model) -> list[Finding]:
     v: list[Finding] = []
     types = model.spec.node_types
@@ -53,6 +67,7 @@ def inspect(model: Model) -> list[Finding]:
                 Severity.ERROR,
                 f"model.{n.type}.{field}",
                 f'The {n.type} "{path}" does not declare {field}, which its type requires.',
+                subject=n.id,
             )
             for field in (node_type.requires if node_type else ())
             if not _has(n, field)
@@ -64,6 +79,7 @@ def inspect(model: Model) -> list[Finding]:
             Severity.ERROR,
             f"model.{n.type}.documentation",
             f'The {n.type} "{path}" holds {len(n.nodes)} elements inside, but is not documented.',
+            subject=n.id,
         )
         for n, path in nodes
         if n.nodes and not n.docs
@@ -82,6 +98,7 @@ def inspect(model: Model) -> list[Finding]:
                 Severity.ERROR,
                 f"model.{n.type}.decisions",
                 f'The {n.type} "{path}" holds elements inside, but no decision backs it.',
+                subject=n.id,
             )
             for n, path in nodes
             if n.nodes and n.id not in decided
@@ -99,6 +116,7 @@ def inspect(model: Model) -> list[Finding]:
             "model.relation.technology",
             f'The relation between "{path_of.get(r.source, r.source)}" and '
             f'"{path_of.get(r.target, r.target)}" declares no technology.',
+            subject=_rel_subject(r),
         )
         for r in model.written_relations()
         if not r.technology
@@ -110,6 +128,7 @@ def inspect(model: Model) -> list[Finding]:
             Severity.WARNING,
             f"model.{n.type}.description",
             f'The {n.type} "{path}" has no description.',
+            subject=n.id,
         )
         for n, path in nodes
         if not n.description
@@ -122,6 +141,7 @@ def inspect(model: Model) -> list[Finding]:
             Severity.WARNING,
             "model.element.disconnected",
             f'The element "{path}" relates to nothing.',
+            subject=n.id,
         )
         for n, path in nodes
         if n.id not in touched and not n.nodes
@@ -137,6 +157,7 @@ def inspect(model: Model) -> list[Finding]:
                 Severity.ERROR,
                 "model.scope",
                 'The model does not declare its scope. "landscape" or "system" is recommended.',
+                subject=MODEL,
             )
         )
 

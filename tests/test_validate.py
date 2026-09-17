@@ -82,6 +82,15 @@ def test_mcp_tool_returns_json() -> None:
     assert "findings" in out
 
 
+def test_to_dict_carries_subject() -> None:
+    """Every finding serialised to a dict must carry a 'subject' key."""
+    report = validate_source(AGATHA)
+    for f in report.findings:
+        d = f.to_dict()
+        assert "subject" in d, f"finding {f.rule!r} has no 'subject' key in to_dict()"
+        assert isinstance(d["subject"], str)
+
+
 SIMPLE_DSL = (FIX / "simple.dsl").read_text("utf-8")
 
 
