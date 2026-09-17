@@ -199,7 +199,7 @@ def create_app(token: str | None = None, *, auth: Authenticator | None = None) -
 
     @app.post("/v1/convert", tags=["tools"])
     def convert(body: ConvertIn) -> Response:
-        """Export to drawio (JSON, separate C4 views) or structurizr (raw DSL as text/plain)."""
+        """Export to drawio (JSON views), structurizr (raw DSL), or mermaid (JSON, C4 only)."""
         try:
             out = convert_source(body.source, body.to)
         except ModelError as exc:

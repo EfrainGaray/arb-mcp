@@ -42,10 +42,14 @@ of guessing. It is the deterministic replacement for a generation prompt.
 
 **Returns.**
 ```json
-{ "spec": { "nodeTypes": {…}, "relationTypes": {…} }, "schema": { …draft 2020-12… } }
+{ "spec": { "nodeTypes": {…}, "relationTypes": {…} }, "schema": { …draft 2020-12… },
+  "canonical_form": "…the CANONICAL_FORM string…" }
 ```
 `spec` is the fixed C4 spec the server injects into every built model (see
 `build_model_tool`). `schema` is the full normative schema — roughly 8 KB.
+`canonical_form` is the `CANONICAL_FORM` constant from `loading.py` — the
+human-readable description of what the canonical model is and what each accepted
+surface can carry.
 
 **Notes.** The spec returned is exactly what `build_model_tool` will enforce, so a
 host that reads `spec.nodeTypes` and uses only those types cannot get a type error
@@ -143,10 +147,13 @@ Full detail — verification order, every variable, status codes, the audit line
 IdP recipe and what is not implemented — in [AUTH.md](AUTH.md).
 
 **Audit.** One JSON line per request on the `arb_mcp.audit` logger — method, path,
-status, milliseconds, and `caller`: the verified subject (client id for a machine,
-`sub` for a person; a hash prefix in static mode), `rejected:<hash prefix>` when a
-credential was presented and refused, `anonymous` when none was. The credential
-itself is never logged.
+status, milliseconds, `caller` (the verified subject: client id for a machine, `sub`
+for a person; a hash prefix in static mode; `rejected:<hash prefix>` when a credential
+was presented and refused; `anonymous` when none was), and `request_id` (echoed in the
+`X-Request-ID` response header; client may supply one in the request header). The
+credential itself is never logged. Tool calls made through the mounted `/mcp` transport
+emit a second line on the same logger with `tool`, `outcome`, and the same `request_id`
+so HTTP and tool lines can be correlated.
 
 **Run.** Production: the OIDC variables (`ARB_OIDC_ISSUER`, `ARB_OIDC_AUDIENCE`,
 optional `ARB_OIDC_SCOPE` / `ARB_OIDC_JWKS_URL`) via `--env-file`, then `arb-mcp-http`.
@@ -174,9 +181,12 @@ whether it may merge.
   "blocking_count": 2,
   "findings": [
     { "severity": "ERROR", "rule": "model.relation.technology",
+      "subject": "cust->api",
       "message": "The relationship between … is missing a technology.", "blocking": true },
     { "severity": "WARNING", "rule": "model.softwareSystem.documentation",
-      "message": "…", "blocking": false } ] }
+      "subject": "billing",
+      "message": "…", "blocking": false } ],
+  "lost": [] }
 ```
 `may_merge` is `true` iff `blocking_count` is `0`. `findings` is the full list, all
 severities. Rules are namespaced (`model.<type>.<aspect>`); the four that the
@@ -194,10 +204,10 @@ gets a safe answer — but it should read `error` to tell this from a lint failu
 `model.empty`, `model.id.duplicate`, `model.relation.endpoint` — because a duplicate
 id silently overwrites a diagram cell and a dangling endpoint cannot be drawn. All
 three are `ERROR`. Every finding carries an addressable `subject` field: the
-element id for element rules, `"{source}->{target}"` for relation rules, the
-view id for view rules, and `""` for model-level rules (`model.empty`,
-`model.scope`). The `subject` is separate from `message`, which uses the
-human-readable name path for readability.
+element id for element rules; for relation rules, the authored relation `id` when
+one was given, otherwise `"{source}->{target}"`; the view id for view rules; and `""`
+for model-level rules (`model.empty`, `model.scope`). The `subject` is separate from
+`message`, which uses the human-readable name path for readability.
 
 ---
 
@@ -335,7 +345,7 @@ is refreshed (audit H1). Listed so nobody rebuilds them.
 | `ordinal_inspections.py` | the layout rules that never touch a pixel: `duplicate-cell`, `rank-gap`, `backward-edge`, `edge-crossing` counted the Sugiyama way (endpoints in opposite order between adjacent ranks). Their fix is always "change a rank/order". | domain (standard) |
 | `render_inspections.py` | render QA against a profile: containment, sibling overlap, edge through a foreign node, label on a route; plus corridor/rhythm/frame-hugging for orthogonal routing. Their fix is always "move N units". May report a bad drawing, may never propose a model change. | exporter |
 | `layout_geometry.py` | the pure primitives (rects, segments, collinear overlap, clearance) the two above share. Ported from tt-a1i/archify (MIT). | exporter |
-| `to_drawio.py` | drawio exporter driven by cells, geometry **relative to the parent cell**, sizes from `examples/c4.render.json`; verified by opening the file in drawio. | exporter — to merge with `domain/drawio.py` (audit H4) |
+| `to_drawio.py` | drawio exporter driven by cells, geometry **relative to the parent cell**, sizes from `examples/c4.render.json`; verified by opening the file in drawio. | exporter — to merge with `domain/drawio/` package (audit H4) |
 | `check_drawio.py` | reads a `.drawio` the way drawio does: parent missing or declared after the child, child geometry outside its parent, dangling edge endpoint, duplicate id. | exporter QA |
 | `examples/c4.render.json` | the render profile: per-type size, shape, colours, grid gaps. **The model never references it**; the caller picks it. | render profile |
 

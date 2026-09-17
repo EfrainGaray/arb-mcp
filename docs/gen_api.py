@@ -53,7 +53,8 @@ async def main():
                               for k in list(c["spec"]["nodeTypes"])[:2]},
                               "relationTypes": c["spec"]["relationTypes"]},
                      "schema": {"$comment": "full JSON Schema draft 2020-12 — "
-                                f"{len(json.dumps(c['schema']))} bytes, elided here"}}
+                                f"{len(json.dumps(c['schema']))} bytes, elided here"},
+                     "canonical_form": c["canonical_form"]}
             md.append("**Response** (spec trimmed to two node types; schema elided)\n```json\n" +
                       block(shape) + "\n```\n")
 
@@ -88,9 +89,10 @@ async def main():
 
             # 4. convert_model drawio + structurizr
             md.append("---\n\n## `convert_model`\n")
-            md.append("Exports a design. `to` ∈ {`drawio`, `structurizr`}. "
+            md.append("Exports a design. `to` ∈ {`drawio`, `structurizr`, `mermaid`}. "
                       "drawio returns SEPARATE C4 views (one C1, one C2 per system, one "
-                      "C3 per container), never tabs.\n")
+                      "C3 per container), never tabs. mermaid returns the same envelope "
+                      "with a `mermaid` key instead of `xml` (C4 models only).\n")
             md.append("**Request** (drawio)\n```json\n" +
                       block({"name": "convert_model", "arguments": {"source": "<model or DSL>", "to": "drawio"}}) +
                       "\n```\n")

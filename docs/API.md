@@ -54,7 +54,8 @@ Kiro calls this first to learn the C4 types and schema it must draft against. No
   },
   "schema": {
     "$comment": "full JSON Schema draft 2020-12 — 8772 bytes, elided here"
-  }
+  },
+  "canonical_form": "The JSON Schema is normative and schema-valid JSON is the canonical model and the interchange form. Structurizr DSL is an accepted input surface and what it cannot carry is reported as lost, never dropped silently. drawio, Structurizr DSL and Mermaid are exports over the validated model, with round-trip guaranteed for what each notation can express."
 }
 ```
 
@@ -208,7 +209,8 @@ The merge gate. `source` may be canonical JSON or Structurizr DSL — format det
       "message": "The softwareSystem \"Billing\" holds elements inside, but no decision backs it.",
       "blocking": true
     }
-  ]
+  ],
+  "lost": []
 }
 ```
 
@@ -225,7 +227,7 @@ The merge gate. `source` may be canonical JSON or Structurizr DSL — format det
 
 ## `convert_model`
 
-Exports a design. `to` ∈ {`drawio`, `structurizr`}. drawio returns SEPARATE C4 views (one C1, one C2 per system, one C3 per container), never tabs.
+Exports a design. `to` ∈ {`drawio`, `structurizr`, `mermaid`}. drawio returns SEPARATE C4 views (one C1, one C2 per system, one C3 per container), never tabs. mermaid returns the same envelope with a `mermaid` key instead of `xml` (C4 models only).
 
 **Request** (drawio)
 ```json

@@ -1,7 +1,7 @@
 # arb-mcp
 
-Architecture Review Board MCP. A Python MCP server that validates, converts and
-queries C4/architecture designs. It is the engine of a Kiro Power
+Architecture Review Board MCP. A Python MCP server that validates and converts
+C4/architecture designs. It is the engine of a Kiro Power
 (POWER.md + this server + hooks).
 
 The JSON Schema is normative and schema-valid JSON is the canonical model and the interchange form. Structurizr DSL is an accepted input surface and what it cannot carry is reported as lost, never dropped silently. drawio, Structurizr DSL and Mermaid are exports over the validated model, with round-trip guaranteed for what each notation can express.
@@ -15,7 +15,7 @@ validation path by construction.
 - `domain/` — the typed canonical model (`model.py`: frozen `Model`, `Node`,
   `Relation`, `Spec`, mirrors of the normative JSON Schema), the loader that
   holds any input to the schema, the linter, and the exporters (drawio,
-  Structurizr), the spec-driven `inspections`, the `implied` relations
+  Structurizr, Mermaid), the spec-driven `inspections.py`, the `implied` relations
   transformation and the Structurizr DSL parser — all typed, all under the
   same ruff/mypy/coverage gates. Nothing is vendored or exempt any more.
 - `application/` — use cases and ports.
@@ -66,7 +66,7 @@ epic, drafts the C4 elements — and drives these deterministic tools. Five tool
 
 | Kiro wants to… | Tool | Call |
 |---|---|---|
-| Know what shape to draft | `describe_contract` | `describe_contract()` -> `{spec, schema}` |
+| Know what shape to draft | `describe_contract` | `describe_contract()` -> `{spec, schema, canonical_form}` |
 | Turn its draft into a validated model | `build_model_tool` | `build_model_tool(nodes, relations?, name?)` -> `{ok, model, validation}` |
 | Validate a design (the merge gate) | `validate_model` | `validate_model(source)` -> `{may_merge, blocking_count, findings}` |
 | Get the diagrams / DSL | `convert_model` | `convert_model(source, to)` -> drawio views / Structurizr DSL |
@@ -79,8 +79,9 @@ Typical loop, all inside Kiro:
 3. `build_model_tool(nodes, relations)` — the MCP injects the fixed spec, holds
    it to the schema, and returns the model plus its validation report. A
    malformed draft comes back with the exact schema failure, which Kiro fixes.
-4. `convert_model(model, to="drawio")` for the separate C1/C2/C3 diagrams and
-   `to="structurizr"` for the repo DSL.
+4. `convert_model(model, to="drawio")` for the separate C1/C2/C3 diagrams,
+   `to="structurizr"` for the repo DSL, or `to="mermaid"` for GitHub/GitLab-renderable
+   C4 diagrams.
 
 `source` is any accepted surface — canonical schema JSON or Structurizr DSL;
 the format is detected. Only `validate_model` decides a merge. drawio always
