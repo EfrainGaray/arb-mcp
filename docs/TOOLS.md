@@ -264,11 +264,13 @@ of duplicated.
 
 **Arguments.** `source` — any accepted surface.
 
-**Environment.** `LEANIX_BASE_URL`, `LEANIX_API_TOKEN`. Auth is OAuth2 client
-credentials at `/services/mtm/v1/oauth2/token` with `apitoken:<token>`; lookups are
-GraphQL `allFactSheets` at `/services/pathfinder/v1/graphql`, filtered by fact-sheet
-type and full-text search, then matched by **exact name** (fuzzy matching produced
-false "known"s in audit). A `401` retries the token once.
+**Environment.** `LEANIX_BASE_URL`, `LEANIX_API_TOKEN`, `LEANIX_TIMEOUT_SECONDS`
+(default `10`; must be a positive number — changed from 30 in v0.2.0). Auth is
+OAuth2 client credentials at `/services/mtm/v1/oauth2/token` with
+`apitoken:<token>`; lookups are GraphQL `allFactSheets` at
+`/services/pathfinder/v1/graphql`, filtered by fact-sheet type and full-text
+search, then matched by **exact name** (fuzzy matching produced false "known"s in
+audit). A `401` retries the token once.
 
 **What it checks.** Only `softwareSystem`, `container`, `component`. A `person` or a
 `decision` is not a catalog fact sheet and is skipped.

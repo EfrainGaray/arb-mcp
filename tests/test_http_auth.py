@@ -198,6 +198,26 @@ def test_oidc_without_audience_is_refused() -> None:
         from_env({"ARB_OIDC_ISSUER": ISS})
 
 
+def test_jwks_client_is_built_with_an_explicit_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PyJWKClient must be constructed with timeout=5, not the implicit default."""
+    captured: list[dict[str, Any]] = []
+
+    def _recorder(url: str, **kwargs: Any) -> None:
+        captured.append({"url": url, **kwargs})
+
+    monkeypatch.setattr(auth_mod, "PyJWKClient", _recorder)
+    a = JwtAuth(ISS, AUD, jwks_url="https://idp.example.test/jwks")
+    # Trigger the lazy client construction. _recorder returns None so the lambda
+    # `client.get_signing_key_from_jwt` raises AttributeError on None — that is
+    # expected and irrelevant; we only care about the PyJWKClient kwargs.
+    with pytest.raises(AttributeError):
+        a._resolve_key("any-token")
+    assert len(captured) == 1
+    assert captured[0]["timeout"] == 5
+
+
 def test_discovery_rejects_a_document_for_another_issuer(monkeypatch: pytest.MonkeyPatch) -> None:
     """A discovery document that names a different issuer is an attack or a
     misconfiguration; either way the JWKS it points at must not be trusted."""

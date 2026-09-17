@@ -64,6 +64,11 @@ ARB_HTTP_TOKEN=…                                       # refused if an issuer 
 ARB_HTTP_HOST=127.0.0.1                                # 0.0.0.0 only behind TLS
 ARB_HTTP_PORT=8000
 LEANIX_BASE_URL / LEANIX_API_TOKEN                     # only for /v1/catalog
+LEANIX_TIMEOUT_SECONDS=10                              # per-call socket timeout for
+                                                       # LeanIX auth + GraphQL hops
+                                                       # (default 10; was 30 before
+                                                       # v0.2.0). Must be a positive
+                                                       # number; refused otherwise.
 ```
 
 Pass them with `--env-file` (mode 600) so no secret ever sits on a command line,
@@ -86,10 +91,27 @@ dependency, so the mounted `/mcp` transport is covered by the same rule.
 One JSON line per request on the `arb_mcp.audit` logger:
 
 ```
-{"method":"GET","path":"/v1/contract","status":200,"ms":22.0,"caller":"arb-mcp-ci"}
-{"method":"GET","path":"/v1/contract","status":401,"ms":0.2,"caller":"rejected:416bccbf83bb"}
-{"method":"GET","path":"/v1/contract","status":401,"ms":0.0,"caller":"anonymous"}
+{"request_id":"a3f1…hex32…","method":"GET","path":"/v1/contract","status":200,"ms":22.0,"caller":"arb-mcp-ci"}
+{"request_id":"b7e2…hex32…","method":"GET","path":"/v1/contract","status":401,"ms":0.2,"caller":"rejected:416bccbf83bb"}
+{"request_id":"c9d0…hex32…","method":"GET","path":"/v1/contract","status":401,"ms":0.0,"caller":"anonymous"}
 ```
+
+`request_id` is a 32-character lowercase hex string (uuid4, no hyphens). If the
+caller supplies an `X-Request-ID` header matching `^[A-Za-z0-9._-]{1,64}$` the
+value is kept unchanged; hostile values are replaced with a fresh one. The same
+id is echoed in the `X-Request-ID` response header and is bound in a ContextVar
+so a tool run under the mounted `/mcp` transport inherits it — one id to join an
+HTTP line, a tool line, and any uvicorn error in the same log stream.
+
+Tool calls on the same logger produce a second line:
+
+```
+{"request_id":"a3f1…","tool":"validate_model","ms":18.3,"outcome":"ok"}
+{"request_id":"a3f1…","tool":"validate_model","ms":0.1,"outcome":"ok"}
+```
+
+`outcome` is `"ok"` for any result the tool returned (including a structured
+error like `invalid_model`); only an unhandled exception becomes `"error:<Type>"`.
 
 `caller` is, in order: the verified subject; `rejected:<hash prefix of what was
 presented>` when a credential was offered and refused — an auditor must tell a

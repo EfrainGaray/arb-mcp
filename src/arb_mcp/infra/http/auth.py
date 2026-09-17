@@ -138,7 +138,7 @@ class JwtAuth:
     def _resolve_key(self, token: str) -> Any:
         if self._resolver is None:
             url = self._jwks_url or _discover_jwks_url(self.issuer)
-            client = PyJWKClient(url, cache_keys=True, lifespan=600)
+            client = PyJWKClient(url, cache_keys=True, lifespan=600, timeout=5)
             self._resolver = lambda t: client.get_signing_key_from_jwt(t).key
         return self._resolver(token)
 

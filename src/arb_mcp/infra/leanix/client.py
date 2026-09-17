@@ -18,6 +18,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Mapping
 from http import HTTPStatus
 from typing import Any
 
@@ -54,7 +55,7 @@ class LeanIxCatalog:
         base_url: str,
         api_token: str,
         type_map: dict[str, str] | None = None,
-        timeout: float = 30.0,
+        timeout: float = 10.0,
     ):
         self._base = base_url.rstrip("/")
         self._token = api_token
@@ -125,12 +126,36 @@ class LeanIxCatalog:
         return None
 
 
-def from_env() -> LeanIxCatalog:
-    """Build from LEANIX_BASE_URL and LEANIX_API_TOKEN."""
-    base = os.environ.get("LEANIX_BASE_URL")
-    token = os.environ.get("LEANIX_API_TOKEN")
+_DEFAULT_TIMEOUT = 10.0
+
+
+def from_env(env: Mapping[str, str] | None = None) -> LeanIxCatalog:
+    """Build from environment variables (``env`` overrides ``os.environ`` for testing).
+
+    Variables read:
+    - ``LEANIX_BASE_URL`` — required
+    - ``LEANIX_API_TOKEN`` — required
+    - ``LEANIX_TIMEOUT_SECONDS`` — optional; per-call socket timeout in seconds
+      (default 10). Must be a positive number; refused with ``RuntimeError`` if
+      zero, negative, or non-numeric. The timeout bounds each individual HTTP hop
+      (one auth call + one GraphQL query per lookup); it is not a total deadline.
+    """
+    e: Mapping[str, str] = os.environ if env is None else env
+    base = e.get("LEANIX_BASE_URL")
+    token = e.get("LEANIX_API_TOKEN")
     if not base or not token:
         raise RuntimeError(
             "catalog check needs LEANIX_BASE_URL and LEANIX_API_TOKEN in the environment"
         )
-    return LeanIxCatalog(base, token)
+    timeout = _DEFAULT_TIMEOUT
+    raw_timeout = e.get("LEANIX_TIMEOUT_SECONDS")
+    if raw_timeout is not None:
+        try:
+            timeout = float(raw_timeout)
+        except ValueError as exc:
+            raise RuntimeError(
+                f"timeout LEANIX_TIMEOUT_SECONDS must be a positive number, got {raw_timeout!r}"
+            ) from exc
+        if timeout <= 0:
+            raise RuntimeError(f"timeout LEANIX_TIMEOUT_SECONDS must be positive, got {timeout}")
+    return LeanIxCatalog(base, token, timeout=timeout)
