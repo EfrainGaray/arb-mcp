@@ -45,7 +45,8 @@ def test_agatha_c2_digest_matches_golden() -> None:
 
 
 def test_agatha_c3_digest_matches_golden() -> None:
-    """C3 has an external (almacen, reached by servicio); digest re-recorded
+    """C3 externals are only what an edge reaching core touches (api, cli,
+    almacen, youtube); digest re-recorded
     after commit 5 drops the virtual _outside group."""
     model = load((FIX / "agatha.json").read_text("utf-8"))
     views = to_views(model)

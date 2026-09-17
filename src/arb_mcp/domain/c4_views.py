@@ -14,6 +14,11 @@ from dataclasses import dataclass
 
 from .model import Model, Node, Relation
 
+# C4 has four element types. A model may declare others -- a decision record, a
+# deployment node -- and those are metadata about the design, not boxes in it.
+# context() has always filtered to persons and systems; C2 and C3 now agree.
+C4_TYPES = frozenset({"person", "softwareSystem", "container", "component"})
+
 
 @dataclass(frozen=True, slots=True)
 class Edge:
@@ -65,6 +70,33 @@ def resolved_edges(
         seen.add((a, b))
         out.append((a, b, rel))
     return out
+
+
+def _touching(
+    model: Model,
+    pairs: list[tuple[str, str, Relation]],
+    focus: str,
+    inside: set[str],
+) -> list[tuple[str, str, Relation]]:
+    """Only the edges between drawable elements that reach the focus.
+
+    A diagram of X is about X. An edge between two elements that are both
+    outside belongs to some other view, and keeping it drags both of its
+    endpoints in as externals -- which is how a C3 of four components ended up
+    carrying twelve of them, the whole model redrawn at every level. An edge to
+    an element C4 does not draw is dropped for the same reason.
+    """
+    visible = inside | {focus}
+
+    def drawable(nid: str) -> bool:
+        node = model.get(nid)
+        return nid in visible or (node is not None and node.type in C4_TYPES)
+
+    return [
+        (a, b, rel)
+        for a, b, rel in pairs
+        if (a in visible or b in visible) and drawable(a) and drawable(b)
+    ]
 
 
 def _ext_nodes(
@@ -119,7 +151,7 @@ def containers(model: Model, system: Node) -> C4View:
         inside = model.lift_to(nid, container_ids)
         return inside if inside is not None else model.top_of(nid)
 
-    pairs = resolved_edges(model, resolve_end)
+    pairs = _touching(model, resolved_edges(model, resolve_end), sid, container_ids)
     ext_nodes = _ext_nodes(model, pairs, sid, container_ids)
     return C4View(
         level="C2",
@@ -157,7 +189,7 @@ def components(model: Model, container: Node) -> C4View:
             cur = p
         return None
 
-    pairs = resolved_edges(model, resolve_end)
+    pairs = _touching(model, resolved_edges(model, resolve_end), cid, comp_ids)
     ext_nodes = _ext_nodes(model, pairs, cid, comp_ids)
     return C4View(
         level="C3",

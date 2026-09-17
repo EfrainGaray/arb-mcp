@@ -132,3 +132,117 @@ def test_enumeration_order_is_c1_then_c2_per_system_then_c3_per_container(
     c3_positions = [i for i, lv in enumerate(levels) if lv == "C3"]
     if c2_positions and c3_positions:
         assert max(c2_positions) < min(c3_positions), "all C2s must precede all C3s"
+
+
+def _modelo_con_una_relacion_ajena() -> Model:
+    """Two systems, one with containers, plus a relation that touches neither."""
+    return load(
+        json.dumps(
+            {
+                "version": "1.0",
+                "name": "t",
+                "spec": {
+                    "nodeTypes": {
+                        "person": {"contains": []},
+                        "softwareSystem": {"contains": ["container"]},
+                        "container": {"contains": ["component"]},
+                        "component": {"contains": []},
+                    },
+                    "relationTypes": {"uses": {}},
+                },
+                "nodes": [
+                    {"id": "quien", "type": "person", "name": "Quien"},
+                    {
+                        "id": "s",
+                        "type": "softwareSystem",
+                        "name": "S",
+                        "nodes": [
+                            {
+                                "id": "c",
+                                "type": "container",
+                                "name": "C",
+                                "nodes": [{"id": "k", "type": "component", "name": "K"}],
+                            }
+                        ],
+                    },
+                    {"id": "ajeno", "type": "softwareSystem", "name": "Ajeno"},
+                    {"id": "otro", "type": "softwareSystem", "name": "Otro"},
+                ],
+                "relations": [
+                    {"from": "quien", "to": "k", "type": "uses"},
+                    {"from": "ajeno", "to": "otro", "type": "uses"},
+                ],
+            }
+        )
+    )
+
+
+def test_a_view_leaves_out_relations_that_touch_neither_the_focus_nor_its_contents() -> None:
+    """A container diagram of S is about S. The edge Ajeno -> Otro reaches
+    nothing in it, so neither the edge nor its two endpoints belong there.
+
+    Every written relation used to survive the resolve step regardless of where
+    it pointed, so both ends were pulled in as externals: a C3 of a four-component
+    container came out carrying twelve of them, which is the whole model redrawn
+    at every level.
+    """
+    model = _modelo_con_una_relacion_ajena()
+
+    s, c = model.get("s"), model.get("c")
+    assert s is not None and c is not None
+
+    c2 = cv.containers(model, s)
+    assert [n.id for n in c2.externals] == ["quien"]
+    assert all("ajeno" not in (e.source, e.target) for e in c2.edges)
+
+    c3 = cv.components(model, c)
+    assert [n.id for n in c3.externals] == ["quien"]
+    assert all("ajeno" not in (e.source, e.target) for e in c3.edges)
+
+
+def test_a_container_view_draws_only_c4_elements_as_externals() -> None:
+    """C4 has four element types. A decision record is metadata about the design,
+    not a box in it.
+
+    context() already filtered to persons and systems, so C1 never showed them,
+    but C2 and C3 drew every node an edge reached: three decision records turned
+    the container diagram into a wall of ADR cards. The three levels now agree on
+    what counts as an element.
+    """
+    model = load(
+        json.dumps(
+            {
+                "version": "1.0",
+                "name": "t",
+                "spec": {
+                    "nodeTypes": {
+                        "softwareSystem": {"contains": ["container"]},
+                        "container": {"contains": []},
+                        "decision": {"contains": [], "requires": ["status"]},
+                    },
+                    "relationTypes": {"uses": {}, "affects": {"from": ["decision"]}},
+                },
+                "nodes": [
+                    {
+                        "id": "s",
+                        "type": "softwareSystem",
+                        "name": "S",
+                        "nodes": [{"id": "c", "type": "container", "name": "C"}],
+                    },
+                    {
+                        "id": "adr",
+                        "type": "decision",
+                        "name": "ADR",
+                        "properties": {"status": "accepted"},
+                    },
+                ],
+                "relations": [{"from": "adr", "to": "s", "type": "affects"}],
+            }
+        )
+    )
+    s = model.get("s")
+    assert s is not None
+
+    c2 = cv.containers(model, s)
+    assert [n.id for n in c2.externals] == []
+    assert c2.edges == ()
