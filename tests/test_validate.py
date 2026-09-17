@@ -137,6 +137,29 @@ def _facts(d: Any) -> Any:
     return d
 
 
+def test_authored_relation_id_is_the_subject() -> None:
+    """When a relation has an id, findings about it must use that id, not 'src->tgt'."""
+    from arb_mcp.domain.findings import subject_of
+    from arb_mcp.domain.model import Relation
+
+    r_with_id = Relation(source="a", target="b", id="r1")
+    r_without = Relation(source="a", target="b")
+    assert subject_of(r_with_id) == "r1"
+    assert subject_of(r_without) == "a->b"
+
+    # A relation with id=r1 and no technology triggers a finding whose subject is "r1".
+    from arb_mcp.application.build_model import build_model
+
+    nodes = [
+        {"id": "a", "type": "person", "name": "A", "description": "d"},
+        {"id": "b", "type": "softwareSystem", "name": "B", "description": "d"},
+    ]
+    built = build_model(nodes, [{"from": "a", "to": "b", "id": "r1"}])
+    tech_findings = [f for f in built.report.findings if f.rule == "model.relation.technology"]
+    assert tech_findings, "expected a technology finding"
+    assert tech_findings[0].subject == "r1"
+
+
 def test_empty_model_cannot_merge() -> None:
     """Regression: a schema-valid model with zero nodes must be blocked."""
     empty = json.dumps(

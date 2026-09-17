@@ -8,23 +8,9 @@ network, no model weights.
 from __future__ import annotations
 
 from . import implied, inspections
-from .findings import MODEL, Finding, Severity
+from .findings import MODEL, Finding, Severity, subject_of
 from .model import Model
 from .views import members, named_nodes
-
-
-def _rel_subject(rel: object) -> str:
-    """Canonical subject for a relation finding.
-
-    Uses the authored id when set; falls back to ``"{source}->{target}"``
-    so the subject is always addressable even for inline relations.
-    """
-    rid = getattr(rel, "id", "")
-    if rid:
-        return rid
-    src = getattr(rel, "source", "")
-    tgt = getattr(rel, "target", "")
-    return f"{src}->{tgt}"
 
 
 def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
@@ -75,7 +61,7 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                 "model.relation.type.undeclared",
                 f'The relation {r.source} -> {r.target} has type "{r.type}", which the spec '
                 f"does not declare.",
-                subject=_rel_subject(r),
+                subject=subject_of(r),
             )
             for r in model.relations
             if r.type and r.type not in rel_types
@@ -97,7 +83,7 @@ def lint(model: Model, *, include_implied: bool = False) -> list[Finding]:
                         Severity.ERROR,
                         "model.relation.endpoint",
                         f'A relation names {end} "{ref}", which is not an element in the model.',
-                        subject=_rel_subject(rel),
+                        subject=subject_of(rel),
                     )
                 )
 

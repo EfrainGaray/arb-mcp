@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from .findings import MODEL, Finding, Severity
+from .findings import MODEL, Finding, Severity, subject_of
 from .model import Model, Node
 
 _ATTRIBUTE_FIELDS = ("description", "technology", "name")
@@ -37,20 +37,6 @@ def _paths(nodes: tuple[Node, ...], prefix: str = "") -> Iterator[tuple[Node, st
         path = f"{prefix}.{n.name}" if prefix else n.name
         yield n, path
         yield from _paths(n.nodes, path)
-
-
-def _rel_subject(rel: object) -> str:
-    """Canonical subject for a relation finding.
-
-    Uses the authored id when set; falls back to ``"{source}->{target}"``
-    so the subject is always addressable even for inline relations.
-    """
-    rid = getattr(rel, "id", "")
-    if rid:
-        return rid
-    src = getattr(rel, "source", "")
-    tgt = getattr(rel, "target", "")
-    return f"{src}->{tgt}"
 
 
 def inspect(model: Model) -> list[Finding]:
@@ -116,7 +102,7 @@ def inspect(model: Model) -> list[Finding]:
             "model.relation.technology",
             f'The relation between "{path_of.get(r.source, r.source)}" and '
             f'"{path_of.get(r.target, r.target)}" declares no technology.',
-            subject=_rel_subject(r),
+            subject=subject_of(r),
         )
         for r in model.written_relations()
         if not r.technology

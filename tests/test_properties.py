@@ -64,7 +64,12 @@ def c4_model(draw: st.DrawFn) -> dict[str, Any]:
         st.lists(
             st.fixed_dictionaries(
                 {"from": st.sampled_from(endpoints), "to": st.sampled_from(endpoints)},
-                optional={"type": st.just("uses"), "description": text, "technology": text},
+                optional={
+                    "type": st.just("uses"),
+                    "description": text,
+                    "technology": text,
+                    "id": ident,
+                },
             ),
             max_size=8,
         )
@@ -132,22 +137,24 @@ def test_every_finding_subject_is_addressable(raw: dict[str, Any]) -> None:
     view_ids = {v.id for v in model.views}
     model_level = {"model.empty", "model.scope"}
 
+    rel_ids = {r.id for r in model.relations if r.id}
     for f in lint(model, include_implied=True):
         subject = f.subject
         if f.rule in model_level:
             assert subject == SUBJECT_MODEL, f"{f.rule!r}: expected '' got {subject!r}"
             continue
-        # addressable: model element id, relation token, or view id
+        # addressable: model element id, authored relation id, 'src->tgt' token, or view id
         is_element = subject in all_ids
-        is_relation = (
+        is_relation_id = subject in rel_ids
+        is_relation_token = (
             "->" in subject
             and len(subject.split("->")) == 2
             and all(isinstance(p, str) for p in subject.split("->"))
         )
         is_view = subject in view_ids
-        assert is_element or is_relation or is_view or subject == SUBJECT_MODEL, (
-            f"{f.rule!r}: subject {subject!r} is not addressable"
-        )
+        assert (
+            is_element or is_relation_id or is_relation_token or is_view or subject == SUBJECT_MODEL
+        ), f"{f.rule!r}: subject {subject!r} is not addressable"
         # element rules must not use dotted name paths (e.g. 'Agatha.Núcleo hexagonal')
         if f.rule.startswith("model.") and not f.rule.startswith("model.relation."):
             assert "." not in subject, (

@@ -23,13 +23,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import Final
 
-if TYPE_CHECKING:
-    pass
+from .model import Relation
 
 # Sentinel for rules that concern the model as a whole, not any single element.
-MODEL: str = ""
+MODEL: Final[str] = ""
 
 
 class Severity(StrEnum):
@@ -58,3 +57,14 @@ class Finding:
             "message": self.message,
             "blocking": self.severity.blocking,
         }
+
+
+def subject_of(rel: Relation) -> str:
+    """Canonical subject for a relation finding.
+
+    Uses the authored ``id`` when set; falls back to ``"{source}->{target}"``
+    so the subject is always addressable even for inline relations without an id.
+    """
+    if rel.id:
+        return rel.id
+    return f"{rel.source}->{rel.target}"
