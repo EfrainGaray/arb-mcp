@@ -71,11 +71,23 @@ def _cells(boxes: tuple[Box, ...], layout: Layout | None) -> tuple[dict[str, Pla
 def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolved:
     """Place every box. Coordinates come out RELATIVE to the parent, which is
     how drawio reads a nested cell, so nesting maps one to one."""
-    cells, missing = _cells(boxes, layout)
+    horizontal = layout is not None and layout.direction in ("right", "left")
+    # Reading sideways is the same arithmetic on a turned page: every box is
+    # laid out transposed and turned back at the end. Swapping only x and y
+    # afterwards is not enough -- the step between ranks would then come from
+    # the box's height while its width is what has to clear.
+    work = (
+        tuple(Box(b.id, b.parent, (b.size[1], b.size[0])) for b in boxes) if horizontal else boxes
+    )
+    cells, missing = _cells(work, layout)
     derived = set(missing)
     origin = (layout.origin or "manual") if layout else "derived"
-    children: Mapping[str | None, list[Box]] = _group(boxes)
+    children: Mapping[str | None, list[Box]] = _group(work)
     placed: dict[str, Placed] = {}
+    # A parent grows to fit its children: one gap across the rank, and room for
+    # its own label along the reading axis. Transposed, the two swap over.
+    room = grid.rank_gap // 2 + grid.label_room
+    grow_w, grow_h = (room, grid.order_gap) if horizontal else (grid.order_gap, room)
 
     def place(parent: str | None) -> Size:
         """Place one level in the parent's own coordinates; return the box it needed."""
@@ -95,8 +107,8 @@ def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolv
                 w, h = b.size
                 iw, ih = place(b.id)
                 if iw or ih:  # a node with children must fit them: grow
-                    w = max(w, iw + grid.order_gap)
-                    h = max(h, ih + grid.rank_gap // 2 + grid.label_room)
+                    w = max(w, iw + grow_w)
+                    h = max(h, ih + grow_h)
                 placed[b.id] = Placed(
                     b.id, parent, x, y, w, h, "derived" if b.id in derived else origin
                 )
@@ -108,9 +120,9 @@ def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolv
         return total_w, total_h
 
     w, h = place(None)
-    out = [placed[b.id] for b in boxes if b.id in placed]
-    if layout and layout.direction in ("right", "left"):
-        out = [Placed(p.id, p.parent, p.y, p.x, p.w, p.h, p.origin) for p in out]
+    out = [placed[b.id] for b in work if b.id in placed]
+    if horizontal:  # turn the page back: coordinates AND sizes
+        out = [Placed(p.id, p.parent, p.y, p.x, p.h, p.w, p.origin) for p in out]
         w, h = h, w
     if layout and layout.direction in ("up", "left"):
         extent = {p.parent: 0 for p in out}

@@ -4,6 +4,7 @@ and the render profile kept out of the model."""
 from __future__ import annotations
 
 import json
+from itertools import pairwise
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -56,11 +57,50 @@ def test_same_input_same_pixels() -> None:
 
 
 def test_direction_is_a_flip_not_a_second_algorithm() -> None:
+    """Same arithmetic on a turned page: what ran down the page now runs across
+    it, in the same order.
+
+    The boxes do NOT turn with it -- a box stays as wide and as tall as its
+    profile says -- so the coordinates are not a plain transposition of the
+    down-flowing ones. They used to be, and that was the defect: consecutive
+    ranks were then stepped by the box's height while its width had to clear.
+    """
     down = resolve(_boxes(), Layout("down"), GRID)
     right = resolve(_boxes(), Layout("right"), GRID)
-    assert (right.width, right.height) == (down.height, down.width)
-    d, r = down.get("ext"), right.get("ext")
-    assert d and r and (r.x, r.y) == (d.y, d.x)
+
+    d_sys, d_ext = down.get("sys"), down.get("ext")
+    r_sys, r_ext = right.get("sys"), right.get("ext")
+    assert d_sys and d_ext and r_sys and r_ext
+
+    assert d_ext.y > d_sys.y and d_ext.x == d_sys.x  # down: one below the other
+    assert r_ext.x > r_sys.x and r_ext.y == r_sys.y  # right: one beside the other
+    assert (r_ext.w, r_ext.h) == (d_ext.w, d_ext.h)  # the box kept its own size
+    assert r_ext.x >= r_sys.x + r_sys.w  # and they do not overlap
+
+
+def test_a_right_flowing_layout_separates_ranks_by_the_width_of_a_box() -> None:
+    """Reading to the right means consecutive ranks sit side by side, so the gap
+    between them has to clear the box's WIDTH.
+
+    The transposition swapped each box's x and y but left its width and height
+    alone, so the step between ranks came from the height instead: with wide,
+    short C4 boxes (240x120) every rank overlapped the next by half a box.
+    """
+    ancho, alto = 240, 120
+    cajas = tuple(Box(n, None, (ancho, alto)) for n in ("a", "b", "c"))
+    layout = Layout(
+        direction="right",
+        placements=tuple(Placement(node=n, rank=i, order=0) for i, n in enumerate("abc")),
+    )
+    resuelto = resolve(cajas, layout, GRID)
+    puestos = [resuelto.get(n) for n in ("a", "b", "c")]
+    assert all(p is not None for p in puestos)
+
+    for antes, despues in pairwise(puestos):
+        assert antes is not None and despues is not None
+        assert despues.x >= antes.x + antes.w, f"{despues.id} monta sobre {antes.id}"
+        assert despues.y == antes.y, "one rank per column: same row"
+        assert (despues.w, despues.h) == (ancho, alto), "the box keeps its own size"
 
 
 def test_two_profiles_same_verdict_different_drawing() -> None:
