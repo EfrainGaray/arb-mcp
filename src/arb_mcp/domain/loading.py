@@ -61,13 +61,31 @@ def _looks_like_structurizr(text: str) -> bool:
 
 
 def load(text: str) -> Model:
-    """Parse ``text`` (schema JSON or Structurizr DSL) into a validated ``Model``."""
+    """Parse ``text`` (schema JSON or Structurizr DSL) into a validated ``Model``.
+
+    Discards ``lost`` for callers that only need the model.  Use
+    ``load_with_lost`` when the response should report what the import could
+    not carry.
+    """
+    return load_with_lost(text)[0]
+
+
+def load_with_lost(text: str) -> tuple[Model, tuple[str, ...]]:
+    """Parse ``text`` and return both the validated model and what was lost.
+
+    For JSON input ``lost`` is always ``()``.  For Structurizr DSL ``lost``
+    carries every construct the parser could not bring over, reported honestly
+    rather than silently dropped — as ``CANONICAL_FORM`` promises.
+    """
+    lost: tuple[str, ...] = ()
     raw: dict[str, Any]
     try:
         if _looks_like_json(text):
             raw = json.loads(text)
         elif _looks_like_structurizr(text):
-            raw = structurizr_dsl.parse(text).model.to_dict()
+            parsed = structurizr_dsl.parse(text)
+            raw = parsed.model.to_dict()
+            lost = parsed.lost
         else:
             raise ModelError(
                 "unrecognized source: expected canonical JSON ('{') "
@@ -77,7 +95,7 @@ def load(text: str) -> Model:
         raise
     except Exception as exc:  # parse errors from json / the converter
         raise ModelError(str(exc)) from exc
-    return from_dict(raw)
+    return from_dict(raw), lost
 
 
 def from_dict(raw: dict[str, Any]) -> Model:

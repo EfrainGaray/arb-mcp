@@ -104,6 +104,24 @@ def test_structurizr_surface_loads() -> None:
     assert isinstance(report.findings, list)
 
 
+def test_lost_is_empty_for_json_input() -> None:
+    """JSON input never loses anything: CANONICAL_FORM's 'never dropped silently'."""
+    report = validate_source(AGATHA)
+    assert report.lost == ()
+    d = report.to_dict()
+    assert d["lost"] == []
+
+
+def test_lost_is_reported_for_structurizr_input_with_directives() -> None:
+    """Structurizr constructs the parser cannot carry appear in lost, not silently dropped."""
+    dsl = 'workspace "W" {\n  !identifiers hierarchical\n  model {\n    u = person "U"\n  }\n}\n'
+    report = validate_source(dsl)
+    d = report.to_dict()
+    assert "lost" in d
+    # The directive line must be reported
+    assert any("directive" in item for item in d["lost"])
+
+
 def test_plain_text_is_refused_not_guessed() -> None:
     """Only two surfaces exist. Anything else is a ModelError that names them,
     never a parse attempt on a hunch."""

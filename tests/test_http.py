@@ -120,8 +120,9 @@ def test_validate_reports_the_gate(client: TestClient) -> None:
     r = client.post("/v1/validate", json={"source": src, "include_implied": True}, headers=AUTH)
     assert r.status_code == 200
     body = r.json()
-    assert set(body) >= {"may_merge", "blocking_count", "findings"}
+    assert set(body) >= {"may_merge", "blocking_count", "findings", "lost"}
     assert body["may_merge"] == (body["blocking_count"] == 0)
+    assert body["lost"] == []  # JSON input: nothing is lost
 
 
 def test_validate_garbage_is_422(client: TestClient) -> None:
@@ -133,9 +134,11 @@ def test_convert_drawio_returns_separate_views(client: TestClient) -> None:
     src = _model(client)
     r = client.post("/v1/convert", json={"source": src, "to": "drawio"}, headers=AUTH)
     assert r.status_code == 200
-    views = r.json()["views"]
+    body = r.json()
+    views = body["views"]
     assert [v["level"] for v in views][:2] == ["C1", "C2"]
     assert all(v["xml"].startswith("<mxfile") for v in views)
+    assert body["lost"] == []  # JSON input: nothing is lost
 
 
 def test_convert_structurizr_returns_raw_dsl(client: TestClient) -> None:

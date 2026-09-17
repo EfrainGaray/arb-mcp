@@ -18,6 +18,7 @@ from ..domain.model import Model
 @dataclass(frozen=True, slots=True)
 class ValidationReport:
     findings: list[Finding]
+    lost: tuple[str, ...] = ()
 
     @property
     def blocking(self) -> list[Finding]:
@@ -32,6 +33,7 @@ class ValidationReport:
             "may_merge": self.may_merge,
             "blocking_count": len(self.blocking),
             "findings": [f.to_dict() for f in self.findings],
+            "lost": list(self.lost),
         }
 
 
@@ -48,6 +50,10 @@ def validate_source(text: str, *, include_implied: bool = False) -> ValidationRe
     Raises :class:`arb_mcp.domain.loading.ModelError` if the source cannot be
     turned into a schema-valid model — a structural failure, distinct from a
     lint finding on an otherwise valid model.
+
+    The ``lost`` field of the returned report carries what the Structurizr
+    import could not bring over (always empty for JSON input).
     """
-    model = loading.load(text)
-    return validate_model(model, include_implied=include_implied)
+    model, lost = loading.load_with_lost(text)
+    report = validate_model(model, include_implied=include_implied)
+    return ValidationReport(report.findings, lost=lost)

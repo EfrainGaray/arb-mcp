@@ -46,6 +46,18 @@ def convert_source(text: str, fmt: str) -> str:
     """Load ``text`` (any accepted surface) then export it as ``fmt``.
 
     The Structurizr-DSL-to-drawio path the bank needs: load the DSL it already
-    has, hold it to the schema, emit native C4 drawio views."""
-    model = loading.load(text)
-    return convert_model(model, fmt)
+    has, hold it to the schema, emit native C4 drawio views.
+
+    For JSON formats (drawio, mermaid) an additive ``"lost"`` key is injected
+    into the top-level object when the source was Structurizr DSL and the
+    parser could not carry some constructs over.  For plain-text output
+    (structurizr) lost is not surfaced.
+    """
+    model, lost = loading.load_with_lost(text)
+    out = convert_model(model, fmt)
+    if fmt == "structurizr":
+        return out  # plain text: no envelope to inject lost into
+    # Inject lost into the JSON envelope (drawio and mermaid).
+    data = json.loads(out)
+    data["lost"] = list(lost)
+    return json.dumps(data, ensure_ascii=False, indent=2)
