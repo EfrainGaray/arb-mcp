@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import json
+import math
 import os
 import urllib.error
 import urllib.parse
@@ -49,13 +50,16 @@ query($search: String!, $type: String!) {
 """
 
 
+_DEFAULT_TIMEOUT = 10.0
+
+
 class LeanIxCatalog:
     def __init__(
         self,
         base_url: str,
         api_token: str,
         type_map: dict[str, str] | None = None,
-        timeout: float = 10.0,
+        timeout: float = _DEFAULT_TIMEOUT,
     ):
         self._base = base_url.rstrip("/")
         self._token = api_token
@@ -126,9 +130,6 @@ class LeanIxCatalog:
         return None
 
 
-_DEFAULT_TIMEOUT = 10.0
-
-
 def from_env(env: Mapping[str, str] | None = None) -> LeanIxCatalog:
     """Build from environment variables (``env`` overrides ``os.environ`` for testing).
 
@@ -136,9 +137,9 @@ def from_env(env: Mapping[str, str] | None = None) -> LeanIxCatalog:
     - ``LEANIX_BASE_URL`` — required
     - ``LEANIX_API_TOKEN`` — required
     - ``LEANIX_TIMEOUT_SECONDS`` — optional; per-call socket timeout in seconds
-      (default 10). Must be a positive number; refused with ``RuntimeError`` if
-      zero, negative, or non-numeric. The timeout bounds each individual HTTP hop
-      (one auth call + one GraphQL query per lookup); it is not a total deadline.
+      (default 10). Must be a finite positive number; ``nan``, ``inf``, zero,
+      and negative values are refused with ``RuntimeError``.  The timeout bounds
+      each individual HTTP hop; it is not a total deadline across lookups.
     """
     e: Mapping[str, str] = os.environ if env is None else env
     base = e.get("LEANIX_BASE_URL")
@@ -156,6 +157,6 @@ def from_env(env: Mapping[str, str] | None = None) -> LeanIxCatalog:
             raise RuntimeError(
                 f"timeout LEANIX_TIMEOUT_SECONDS must be a positive number, got {raw_timeout!r}"
             ) from exc
-        if timeout <= 0:
+        if not math.isfinite(timeout) or timeout <= 0:
             raise RuntimeError(f"timeout LEANIX_TIMEOUT_SECONDS must be positive, got {timeout}")
     return LeanIxCatalog(base, token, timeout=timeout)

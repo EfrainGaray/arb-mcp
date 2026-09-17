@@ -131,10 +131,10 @@ def test_from_env_uses_default_timeout_of_10() -> None:
 
 
 def test_from_env_refuses_a_non_positive_timeout() -> None:
-    """A zero or negative timeout is refused with RuntimeError (same channel as missing URL)."""
+    """A zero, negative, nan, or inf timeout is refused with RuntimeError."""
     from arb_mcp.infra.leanix.client import from_env
 
-    for bad in ("0", "-1", "-0.5"):
+    for bad in ("0", "-1", "-0.5", "nan", "inf", "-inf"):
         with pytest.raises(RuntimeError, match=r"[Tt]imeout"):
             from_env(
                 {
