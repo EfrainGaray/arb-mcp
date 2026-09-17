@@ -1,3 +1,30 @@
+## v0.2.0 (2026-09-17)
+
+### Feat
+
+- **domain**: report what the Structurizr import could not carry
+- **infra**: explicit LeanIX and JWKS timeouts, LEANIX_TIMEOUT_SECONDS
+- **infra**: request correlation id on HTTP and MCP audit lines
+- **contract**: state the canonical form once, checked against the docs
+- **domain**: Mermaid C4 exporter, convert_model to="mermaid"
+- **domain**: every Finding carries an addressable subject
+
+### Fix
+
+- **infra**: refuse nan and inf timeouts; one default
+- **infra**: correlate the tool line with the HTTP request that carried it
+
+### Refactor
+
+- remove dead branches and tighten tests
+- **domain**: undo the duplication the drawio split introduced
+- **domain**: one subject_of for relations, exercised by the property
+- **domain**: parse Structurizr into typed nodes instead of dicts
+- **domain**: split drawio into a package; C4 scoping in c4_views
+- **domain**: drop the virtual _outside group from C2/C3 placement
+- **domain**: Structurizr parser emits typed Node/Relation (Parsed)
+- **application**: typed CatalogMatch in the catalog report
+
 ## v0.1.0 (2026-09-08)
 
 ### Feat
