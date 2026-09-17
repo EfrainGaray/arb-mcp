@@ -59,3 +59,86 @@ def test_catalog_tool_without_env_is_unavailable_not_a_crash(
     out = json.loads(check_catalog(DSL))
     assert out["ok"] is False and out["error"] == "catalog_unavailable"
     assert json.loads(check_catalog("garbage"))["error"] == "invalid_model"
+
+
+# ── audit / correlation id ────────────────────────────────────────────────────
+def test_tool_call_leaves_one_audit_line_with_tool_name_and_request_id(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import logging
+
+    from arb_mcp.infra.mcp.stdio_server import validate_model
+
+    with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+        validate_model(DSL)
+
+    lines = [r.getMessage() for r in caplog.records if r.name == "arb_mcp.audit"]
+    assert len(lines) == 1
+    entry = json.loads(lines[0])
+    assert entry["tool"] == "validate_model"
+    assert entry["outcome"] == "ok"
+    assert entry.get("request_id")
+
+
+def test_tool_inherits_the_transport_request_id_when_one_is_bound(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """HTTP guard sets request_id in ContextVar; tool must reuse it (HTTP↔MCP correlation)."""
+    import logging
+
+    from arb_mcp.infra import audit
+    from arb_mcp.infra.mcp.stdio_server import validate_model
+
+    token = audit.request_id.set("http-7")
+    try:
+        with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+            validate_model(DSL)
+    finally:
+        audit.request_id.reset(token)
+
+    entry = json.loads(next(r.getMessage() for r in caplog.records if r.name == "arb_mcp.audit"))
+    assert entry["request_id"] == "http-7"
+
+
+def test_tool_uses_the_jsonrpc_id_on_stdio(caplog: pytest.LogCaptureFixture) -> None:
+    """A fake ctx with request_id='17' is used when no transport id is bound."""
+    import logging
+
+    from arb_mcp.infra.mcp.stdio_server import validate_model
+
+    class _FakeCtx:
+        request_id = "17"
+
+    with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+        validate_model(DSL, ctx=_FakeCtx())  # type: ignore[arg-type]
+
+    entry = json.loads(next(r.getMessage() for r in caplog.records if r.name == "arb_mcp.audit"))
+    assert entry["request_id"] == "17"
+
+
+def test_invalid_model_is_outcome_ok_not_error(caplog: pytest.LogCaptureFixture) -> None:
+    """A ModelError turned into a JSON answer is a normal outcome.
+
+    Only an escaped exception (not caught inside the tool) is ``error:<Type>``.
+    """
+    import logging
+
+    from arb_mcp.infra.mcp.stdio_server import validate_model
+
+    with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+        out = json.loads(validate_model("garbage"))
+
+    assert out.get("error") == "invalid_model"
+    entry = json.loads(next(r.getMessage() for r in caplog.records if r.name == "arb_mcp.audit"))
+    assert entry["outcome"] == "ok"
+
+
+def test_ctx_is_not_in_the_tool_input_schema() -> None:
+    """The SDK must strip 'ctx' from the published tool input schemas."""
+    from arb_mcp.infra.mcp.stdio_server import mcp
+
+    tools = mcp._tool_manager.list_tools()
+    for tool in tools:
+        schema = tool.parameters
+        props = schema.get("properties", {})
+        assert "ctx" not in props, f"tool {tool.name!r} exposes 'ctx' in its schema"

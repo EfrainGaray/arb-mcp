@@ -17,9 +17,9 @@ so a container and a laptop start the same way. Exactly one authentication mode:
 
 from __future__ import annotations
 
-import logging
 import os
 
+from ..audit import configure_logging
 from .app import create_app
 from .auth import from_env
 
@@ -29,7 +29,7 @@ def main() -> None:
     # module is imported by the stdio server's package too.
     import uvicorn  # noqa: PLC0415
 
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    configure_logging()
     app = create_app(auth=from_env())
     uvicorn.run(
         app,

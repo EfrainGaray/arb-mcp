@@ -21,8 +21,6 @@ failure the tools already distinguish:
 from __future__ import annotations
 
 import hashlib
-import json
-import logging
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -41,11 +39,11 @@ from ...application.convert_model import FORMATS, convert_source
 from ...application.validate_model import validate_source
 from ...domain import loading
 from ...domain.loading import CANONICAL_FORM, SCHEMA, ModelError
+from ..audit import REQUEST_ID_HEADER, accept_request_id, emit, request_id
 from ..leanix import from_env
 from ..mcp.stdio_server import mcp as mcp_server
 from .auth import Authenticator, AuthError, StaticTokenAuth
 
-_audit = logging.getLogger("arb_mcp.audit")
 _OPEN_PATHS = ("/health", "/docs", "/openapi.json", "/redoc")
 
 
@@ -96,35 +94,38 @@ class _Guard(BaseHTTPMiddleware):
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         t0 = time.perf_counter()
+        rid = accept_request_id(request.headers.get(REQUEST_ID_HEADER))
+        token = request_id.set(rid)
         caller = "anonymous"
-        if not request.url.path.startswith(_OPEN_PATHS):
-            header = request.headers.get("authorization", "")
-            try:
-                caller = self._auth.authenticate(header).subject
-            except AuthError as exc:
-                # A presented-but-refused credential is not the same event as an
-                # anonymous probe, and an auditor needs to tell them apart: name it
-                # by a hash prefix of what was presented, never by the credential.
-                if header.startswith("Bearer ") and header[7:].strip():
-                    caller = "rejected:" + hashlib.sha256(header[7:].encode()).hexdigest()[:12]
-                response = self._rejected(exc)
-                self._log(request, response, t0, caller)
-                return response
-        response = await call_next(request)
-        self._log(request, response, t0, caller)
-        return response
+        try:
+            if not request.url.path.startswith(_OPEN_PATHS):
+                header = request.headers.get("authorization", "")
+                try:
+                    caller = self._auth.authenticate(header).subject
+                except AuthError as exc:
+                    # A presented-but-refused credential is not the same event as an
+                    # anonymous probe, and an auditor needs to tell them apart: name it
+                    # by a hash prefix of what was presented, never by the credential.
+                    if header.startswith("Bearer ") and header[7:].strip():
+                        caller = "rejected:" + hashlib.sha256(header[7:].encode()).hexdigest()[:12]
+                    response = self._rejected(exc)
+                    response.headers[REQUEST_ID_HEADER] = rid
+                    self._log(request, response, t0, caller)
+                    return response
+            response = await call_next(request)
+            response.headers[REQUEST_ID_HEADER] = rid
+            self._log(request, response, t0, caller)
+            return response
+        finally:
+            request_id.reset(token)
 
     def _log(self, request: Request, response: Response, t0: float, caller: str) -> None:
-        _audit.info(
-            json.dumps(
-                {
-                    "method": request.method,
-                    "path": request.url.path,
-                    "status": response.status_code,
-                    "ms": round((time.perf_counter() - t0) * 1000, 1),
-                    "caller": caller,
-                }
-            )
+        emit(
+            method=request.method,
+            path=request.url.path,
+            status=response.status_code,
+            ms=round((time.perf_counter() - t0) * 1000, 1),
+            caller=caller,
         )
 
 

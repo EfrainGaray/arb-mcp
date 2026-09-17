@@ -14,30 +14,38 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 
+# Context must be imported at module top — not under TYPE_CHECKING — so that
+# ``typing.get_type_hints`` can resolve the ``Context | None`` annotation after
+# ``from __future__ import annotations`` turns it into a string. Without this the
+# SDK's context-injection logic silently skips the parameter.
+from mcp.server.mcpserver.context import Context
+
 from ...application.build_model import C4_SPEC, build_model
 from ...application.check_catalog import check_catalog as _check_catalog
 from ...application.convert_model import FORMATS, convert_source
 from ...application.validate_model import validate_source
 from ...domain import loading
 from ...domain.loading import CANONICAL_FORM, SCHEMA, ModelError
+from ..audit import configure_logging, tool_call
 from ..leanix import from_env
 
 mcp = MCPServer("arb-mcp")
 
 
 @mcp.tool()
-def describe_contract() -> str:
+def describe_contract(ctx: Context | None = None) -> str:
     """The contract to build a design against: the C4 spec (allowed node and
     relation types, and what each requires) and the normative JSON schema.
 
     An agent calls this first so it drafts elements of the right shape, instead
     of guessing. This is the deterministic replacement for a generation prompt.
     """
-    return json.dumps(
-        {"spec": C4_SPEC, "schema": SCHEMA, "canonical_form": CANONICAL_FORM},
-        ensure_ascii=False,
-        indent=2,
-    )
+    with tool_call("describe_contract", ctx):
+        return json.dumps(
+            {"spec": C4_SPEC, "schema": SCHEMA, "canonical_form": CANONICAL_FORM},
+            ensure_ascii=False,
+            indent=2,
+        )
 
 
 @mcp.tool()
@@ -45,6 +53,7 @@ def build_model_tool(
     nodes: list[dict[str, Any]],
     relations: list[dict[str, Any]] | None = None,
     name: str = "",
+    ctx: Context | None = None,
 ) -> str:
     """Assemble a canonical model from drafted C4 elements and validate it.
 
@@ -53,21 +62,22 @@ def build_model_tool(
     held to the schema. Returns ``{ok, model, validation}``; on a malformed
     draft, ``{ok:false, error, detail}`` with the exact schema failure to fix.
     """
-    try:
-        built = build_model(nodes, relations or [], name=name)
-    except ModelError as exc:
+    with tool_call("build_model_tool", ctx):
+        try:
+            built = build_model(nodes, relations or [], name=name)
+        except ModelError as exc:
+            return json.dumps(
+                {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
+            )
         return json.dumps(
-            {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
+            {"ok": True, "model": built.model.to_dict(), "validation": built.report.to_dict()},
+            ensure_ascii=False,
+            indent=2,
         )
-    return json.dumps(
-        {"ok": True, "model": built.model.to_dict(), "validation": built.report.to_dict()},
-        ensure_ascii=False,
-        indent=2,
-    )
 
 
 @mcp.tool()
-def validate_model(source: str, include_implied: bool = False) -> str:
+def validate_model(source: str, include_implied: bool = False, ctx: Context | None = None) -> str:
     """Validate a design and report whether it may merge.
 
     ``source`` is a design in an accepted surface — canonical schema JSON or
@@ -75,17 +85,19 @@ def validate_model(source: str, include_implied: bool = False) -> str:
     (false when any ERROR is present), ``blocking_count`` and all ``findings``.
     Only deterministic rules run here; nothing probabilistic changes the verdict.
     """
-    try:
-        report = validate_source(source, include_implied=include_implied)
-    except ModelError as exc:
-        return json.dumps(
-            {"may_merge": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
-        )
-    return json.dumps(report.to_dict(), ensure_ascii=False, indent=2)
+    with tool_call("validate_model", ctx):
+        try:
+            report = validate_source(source, include_implied=include_implied)
+        except ModelError as exc:
+            return json.dumps(
+                {"may_merge": False, "error": "invalid_model", "detail": str(exc)},
+                ensure_ascii=False,
+            )
+        return json.dumps(report.to_dict(), ensure_ascii=False, indent=2)
 
 
 @mcp.tool()
-def convert_model(source: str, to: str = "drawio") -> str:
+def convert_model(source: str, to: str = "drawio", ctx: Context | None = None) -> str:
     """Export a design to another surface. ``to`` is one of: drawio, structurizr, mermaid.
 
     ``source`` is a design in any accepted surface; the format is detected.
@@ -93,20 +105,21 @@ def convert_model(source: str, to: str = "drawio") -> str:
     per system, one C3 per container), never tabbed.  structurizr returns the
     raw DSL text.  mermaid requires a C4 model.
     """
-    try:
-        return convert_source(source, to)
-    except ModelError as exc:
-        return json.dumps(
-            {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
-        )
-    except ValueError as exc:
-        return json.dumps(
-            {"ok": False, "error": str(exc), "formats": list(FORMATS)}, ensure_ascii=False
-        )
+    with tool_call("convert_model", ctx):
+        try:
+            return convert_source(source, to)
+        except ModelError as exc:
+            return json.dumps(
+                {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
+            )
+        except ValueError as exc:
+            return json.dumps(
+                {"ok": False, "error": str(exc), "formats": list(FORMATS)}, ensure_ascii=False
+            )
 
 
 @mcp.tool()
-def check_catalog(source: str) -> str:
+def check_catalog(source: str, ctx: Context | None = None) -> str:
     """Reconcile a design against the architecture catalog (LeanIX, the source of
     truth): which components already exist there (with their catalog id) and
     which are new and must be registered to keep the catalog current.
@@ -115,21 +128,24 @@ def check_catalog(source: str) -> str:
     Informational only — it never blocks a merge. Needs LEANIX_BASE_URL and
     LEANIX_API_TOKEN in the environment.
     """
-    try:
-        model = loading.load(source)
-        report = _check_catalog(model, from_env())
-    except ModelError as exc:
-        return json.dumps(
-            {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
-        )
-    except RuntimeError as exc:
-        return json.dumps(
-            {"ok": False, "error": "catalog_unavailable", "detail": str(exc)}, ensure_ascii=False
-        )
-    return json.dumps({"ok": True, **report.to_dict()}, ensure_ascii=False, indent=2)
+    with tool_call("check_catalog", ctx):
+        try:
+            model = loading.load(source)
+            report = _check_catalog(model, from_env())
+        except ModelError as exc:
+            return json.dumps(
+                {"ok": False, "error": "invalid_model", "detail": str(exc)}, ensure_ascii=False
+            )
+        except RuntimeError as exc:
+            return json.dumps(
+                {"ok": False, "error": "catalog_unavailable", "detail": str(exc)},
+                ensure_ascii=False,
+            )
+        return json.dumps({"ok": True, **report.to_dict()}, ensure_ascii=False, indent=2)
 
 
 def main() -> None:
+    configure_logging()
     mcp.run()
 
 

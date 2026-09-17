@@ -202,3 +202,69 @@ def test_audit_caller_is_who_called_not_who_is_configured(
     assert entries[1]["caller"].startswith("rejected:")
     assert entries[1]["caller"] != entries[0]["caller"]
     assert entries[2]["caller"] == "anonymous"
+
+
+# ── correlation id ─────────────────────────────────────────────────────────────
+def test_audit_line_carries_a_request_id_and_the_response_echoes_it(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import re
+
+    with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+        r = client.get("/v1/contract", headers=AUTH)
+    lines = [rec.getMessage() for rec in caplog.records if rec.name == "arb_mcp.audit"]
+    assert len(lines) == 1
+    entry = json.loads(lines[0])
+    rid = entry["request_id"]
+    assert re.match(r"^[0-9a-f]{32}$", rid), f"expected 32 hex chars, got {rid!r}"
+    assert r.headers["X-Request-ID"] == rid
+
+
+def test_client_supplied_request_id_is_kept(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+        r = client.get("/v1/contract", headers={**AUTH, "X-Request-ID": "ci-42"})
+    entry = json.loads(
+        next(rec.getMessage() for rec in caplog.records if rec.name == "arb_mcp.audit")
+    )
+    assert entry["request_id"] == "ci-42"
+    assert r.headers["X-Request-ID"] == "ci-42"
+
+
+def test_hostile_request_id_is_replaced(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import re
+
+    hostile_values = ["a" * 200, "\n{"]
+    for hostile in hostile_values:
+        caplog.clear()
+        with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+            r = client.get("/v1/contract", headers={**AUTH, "X-Request-ID": hostile})
+        line = next(rec.getMessage() for rec in caplog.records if rec.name == "arb_mcp.audit")
+        # The audit line must still be valid JSON with one object
+        entry = json.loads(line)
+        rid = entry["request_id"]
+        # The hostile value must have been replaced
+        assert rid != hostile
+        # The replacement must match the allowed pattern
+        assert re.match(r"^[0-9a-f]{32}$", rid)
+        assert r.headers["X-Request-ID"] == rid
+
+
+def test_rejected_and_anonymous_lines_carry_a_request_id_too(
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+        client.get("/v1/contract", headers=AUTH)
+        client.get("/v1/contract", headers={"Authorization": "Bearer nope"})
+        client.get("/v1/contract")
+    entries = [json.loads(r.getMessage()) for r in caplog.records if r.name == "arb_mcp.audit"]
+    assert [e["status"] for e in entries] == [200, 401, 401]
+    for e in entries:
+        assert "request_id" in e, f"missing request_id in: {e}"
