@@ -83,18 +83,32 @@ def test_tool_call_leaves_one_audit_line_with_tool_name_and_request_id(
 def test_tool_inherits_the_transport_request_id_when_one_is_bound(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """HTTP guard sets request_id in ContextVar; tool must reuse it (HTTP↔MCP correlation)."""
+    """request.state.request_id (set by the HTTP guard) beats ctx.request_id.
+
+    The guard writes the id to Request.state per-request rather than to a ContextVar
+    that would be inherited at asyncio task creation during initialize.  This means
+    every tools/call sees the *current* request's id regardless of when the session
+    task was spawned.
+    """
     import logging
 
-    from arb_mcp.infra import audit
     from arb_mcp.infra.mcp.stdio_server import validate_model
 
-    token = audit.request_id.set("http-7")
-    try:
-        with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
-            validate_model(DSL)
-    finally:
-        audit.request_id.reset(token)
+    class _FakeState:
+        request_id = "http-7"
+
+    class _FakeRequest:
+        state = _FakeState()
+
+    class _FakeRequestContext:
+        request = _FakeRequest()
+
+    class _FakeCtx:
+        request_context = _FakeRequestContext()
+        request_id = "jsonrpc-99"  # lower priority; must not win
+
+    with caplog.at_level(logging.INFO, logger="arb_mcp.audit"):
+        validate_model(DSL, ctx=_FakeCtx())  # type: ignore[arg-type]
 
     entry = json.loads(next(r.getMessage() for r in caplog.records if r.name == "arb_mcp.audit"))
     assert entry["request_id"] == "http-7"

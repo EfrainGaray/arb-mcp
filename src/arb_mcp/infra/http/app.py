@@ -96,6 +96,11 @@ class _Guard(BaseHTTPMiddleware):
         t0 = time.perf_counter()
         rid = accept_request_id(request.headers.get(REQUEST_ID_HEADER))
         token = request_id.set(rid)
+        # Make the id available to tool_call via ctx.request_context.request.state;
+        # scope["state"] is shared between the outer app and the mounted /mcp sub-app,
+        # so tools reading Request.state.request_id see the *current* request's id,
+        # not the id that was bound when the session task was created on initialize.
+        request.state.request_id = rid
         caller = "anonymous"
         try:
             if not request.url.path.startswith(_OPEN_PATHS):

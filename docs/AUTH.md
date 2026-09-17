@@ -99,9 +99,10 @@ One JSON line per request on the `arb_mcp.audit` logger:
 `request_id` is a 32-character lowercase hex string (uuid4, no hyphens). If the
 caller supplies an `X-Request-ID` header matching `^[A-Za-z0-9._-]{1,64}$` the
 value is kept unchanged; hostile values are replaced with a fresh one. The same
-id is echoed in the `X-Request-ID` response header and is bound in a ContextVar
-so a tool run under the mounted `/mcp` transport inherits it — one id to join an
-HTTP line, a tool line, and any uvicorn error in the same log stream.
+id is echoed in the `X-Request-ID` response header and written to
+`request.state.request_id`; a tool running under the mounted `/mcp` transport
+reads it from `ctx.request_context.request.state.request_id` — one id to join
+an HTTP line, a tool line, and any uvicorn error in the same log stream.
 
 Tool calls on the same logger produce a second line:
 

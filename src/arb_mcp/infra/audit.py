@@ -6,12 +6,12 @@ logging framework.
 
 The single ``arb_mcp.audit`` logger is the request log for both transports:
 
-- HTTP: the guard binds an id per request (from the incoming ``X-Request-ID`` header
-  or a freshly minted one), echoes it in the response, and passes it downstream via
-  ``request_id`` ContextVar so a tool run under streamable HTTP inherits the same id.
-- stdio: each tool wraps its body with ``tool_call()``, which reads the id from the
-  ContextVar if one is already bound (HTTP path), from ``ctx.request_id`` (the
-  JSON-RPC id on stdio), or mints a fresh one.
+- HTTP: the guard mints or keeps an id per request, echoes it in the response header,
+  and sets it on ``request.state.request_id``.  A tool running under the mounted
+  ``/mcp`` transport reads it from ``ctx.request_context.request.state.request_id``
+  — one id to join the HTTP line, the tool line, and any uvicorn error.
+- stdio: each tool wraps its body with ``tool_call()``, which reads the JSON-RPC
+  message id from ``ctx.request_id``, or mints a fresh one.
 """
 
 from __future__ import annotations
@@ -73,26 +73,30 @@ def tool_call(name: str, ctx: object | None) -> Iterator[None]:
     """Bind a correlation id for the tool body and emit an audit line on exit.
 
     Precedence for the id, highest first:
-    1. An id already bound by the transport (the HTTP guard set ``request_id``).
+
+    1. ``ctx.request_context.request.state.request_id`` — set by the HTTP guard
+       on the Starlette ``Request.state`` for every HTTP request.  This survives
+       asyncio task inheritance correctly: ``Request.state`` is a fresh object per
+       HTTP request, so it carries the *current* request's id rather than the one
+       captured when the session task was born during ``initialize``.
     2. ``ctx.request_id`` — the JSON-RPC message id injected by the SDK on stdio.
     3. A freshly minted uuid4 hex.
 
     ``ctx`` is typed ``object | None`` so this module does not import ``mcp``.
-    The attribute is read with ``getattr`` so a ``None`` ctx and a ctx with no
-    ``request_id`` are both handled gracefully.
+    All attributes are read with ``getattr`` so a ``None`` ctx, a stdio ctx with
+    no request context, and an HTTP ctx without a state id are all handled
+    gracefully.
 
     The emitted line carries ``tool``, ``ms``, ``outcome`` (``"ok"`` or
     ``"error:<ExceptionType>"``), and ``request_id``.
     """
-    bound = request_id.get()
-    if bound is not None:
-        # HTTP guard already set it; inherit without touching the ContextVar so
-        # the guard's reset stays authoritative.
-        token = None
-    else:
-        raw = getattr(ctx, "request_id", None)
-        rid = accept_request_id(str(raw) if raw is not None else None)
-        token = request_id.set(rid)
+    # Walk: ctx -> request_context -> request -> state -> request_id
+    _rc = getattr(ctx, "request_context", None)
+    _req = getattr(_rc, "request", None)
+    _state = getattr(_req, "state", None)
+    raw = getattr(_state, "request_id", None) or getattr(ctx, "request_id", None)
+    rid = accept_request_id(str(raw) if raw is not None else None)
+    token = request_id.set(rid)
 
     t0 = time.perf_counter()
     outcome = "ok"
@@ -104,5 +108,4 @@ def tool_call(name: str, ctx: object | None) -> Iterator[None]:
     finally:
         ms = round((time.perf_counter() - t0) * 1000, 1)
         emit(tool=name, ms=ms, outcome=outcome)
-        if token is not None:
-            request_id.reset(token)
+        request_id.reset(token)
