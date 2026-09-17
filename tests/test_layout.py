@@ -72,8 +72,12 @@ def test_direction_is_a_flip_not_a_second_algorithm() -> None:
     r_sys, r_ext = right.get("sys"), right.get("ext")
     assert d_sys and d_ext and r_sys and r_ext
 
-    assert d_ext.y > d_sys.y and d_ext.x == d_sys.x  # down: one below the other
-    assert r_ext.x > r_sys.x and r_ext.y == r_sys.y  # right: one beside the other
+    # down: one below the other; right: one beside it. Centred across the other
+    # axis either way, so the coordinate that does not advance is the midpoint.
+    assert d_ext.y > d_sys.y
+    assert d_ext.x + d_ext.w / 2 == d_sys.x + d_sys.w / 2
+    assert r_ext.x > r_sys.x
+    assert r_ext.y + r_ext.h / 2 == r_sys.y + r_sys.h / 2
     assert (r_ext.w, r_ext.h) == (d_ext.w, d_ext.h)  # the box kept its own size
     assert r_ext.x >= r_sys.x + r_sys.w  # and they do not overlap
 
@@ -218,3 +222,35 @@ def test_reading_sideways_leaves_room_for_an_edge_label_between_ranks() -> None:
     a_la, b_la = lado.get("a"), lado.get("b")
     assert a_la and b_la
     assert b_la.x - (a_la.x + a_la.w) == grid.edge_label_room
+
+
+def test_a_rank_is_centred_against_the_widest_one() -> None:
+    """A lone node in its rank belongs in the middle of the diagram, not pinned
+    to the left edge.
+
+    Each rank started at the same origin, so a single node under a row of three
+    sat under the FIRST of them and every edge to the other two crossed the
+    picture on its way down.
+    """
+    cajas = (
+        Box("a", None, (240, 120)),
+        Box("b", None, (240, 120)),
+        Box("c", None, (240, 120)),
+        Box("solo", None, (240, 120)),
+    )
+    layout = Layout(
+        direction="down",
+        placements=(
+            Placement("a", 0, 0),
+            Placement("b", 0, 1),
+            Placement("c", 0, 2),
+            Placement("solo", 1, 0),
+        ),
+    )
+    r = resolve(cajas, layout, GRID)
+    a, c, solo = r.get("a"), r.get("c"), r.get("solo")
+    assert a and c and solo
+
+    fila = (a.x, c.x + c.w)
+    centro_fila = (fila[0] + fila[1]) / 2
+    assert solo.x + solo.w / 2 == centro_fila

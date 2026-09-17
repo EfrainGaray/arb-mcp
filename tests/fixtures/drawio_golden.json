@@ -3,18 +3,18 @@
     "level": "C1",
     "scope": "system-landscape",
     "name": "Agatha — C1 System Context",
-    "xml_sha256": "f88b3b048c2223b4e373be1e158067758386918aff3f4d315b872d0cc15448ab"
+    "xml_sha256": "0fde7a9604a620db18e6d23328f55242c23be35ce3765b2fea9073ae28635825"
   },
   "C2:agatha": {
     "level": "C2",
     "scope": "agatha",
     "name": "Agatha — C2 Containers",
-    "xml_sha256": "d9224390adc03ae134d74164f0fe4f69da4e946fece36e465341e49a5f48629b"
+    "xml_sha256": "b1b0f6e60fee16e172517409fd96cf5af391ee884707be1c1372d48d028c93f0"
   },
   "C3:core": {
     "level": "C3",
     "scope": "core",
     "name": "Núcleo hexagonal — C3 Components",
-    "xml_sha256": "75d414f402c306b6c383ff65b2857759c39d075788184b668b2e50aeb3c26e97"
+    "xml_sha256": "7587175262d67dabf2db2bf7bab50d00e2698638946cf66eed41c4fae558e65d"
   }
 }

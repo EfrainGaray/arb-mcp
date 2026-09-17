@@ -68,6 +68,22 @@ def _cells(boxes: tuple[Box, ...], layout: Layout | None) -> tuple[dict[str, Pla
     return cells, missing
 
 
+def _centre(placed: dict[str, Placed], spans: list[tuple[list[str], int]], widest: int) -> None:
+    """Shift each rank so it is centred against the widest one.
+
+    A lone node used to sit under the FIRST of the row above rather than in the
+    middle of the picture, which sent every other edge across the diagram on its
+    way past.
+    """
+    for row_ids, span in spans:
+        shift = (widest - span) // 2
+        if not shift:
+            continue
+        for nid in row_ids:
+            q = placed[nid]
+            placed[nid] = Placed(q.id, q.parent, q.x + shift, q.y, q.w, q.h, q.origin)
+
+
 def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolved:
     """Place every box. Coordinates come out RELATIVE to the parent, which is
     how drawio reads a nested cell, so nesting maps one to one."""
@@ -101,9 +117,11 @@ def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolv
         total_w = total_h = 0
         y = grid.rank_gap // 2 if parent is not None else 0
         x0 = grid.order_gap // 2 if parent is not None else 0
+        spans: list[tuple[list[str], int]] = []  # the ids of each rank and its extent
         for rank in sorted(rows):
             x = x0
             row_h = 0
+            row_ids: list[str] = []
             for b in sorted(rows[rank], key=lambda b: cells[b.id].order):
                 w, h = b.size
                 iw, ih = place(b.id)
@@ -113,10 +131,14 @@ def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolv
                 placed[b.id] = Placed(
                     b.id, parent, x, y, w, h, "derived" if b.id in derived else origin
                 )
+                row_ids.append(b.id)
                 x += w + grid.order_gap
                 row_h = max(row_h, h)
-            total_w = max(total_w, x - x0 - grid.order_gap)
+            span = x - x0 - grid.order_gap
+            spans.append((row_ids, span))
+            total_w = max(total_w, span)
             y += row_h + rank_gap
+        _centre(placed, spans, total_w)
         total_h = y - (grid.rank_gap // 2 if parent is not None else 0) - rank_gap
         return total_w, total_h
 
