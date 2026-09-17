@@ -80,13 +80,20 @@ def test_quotes_and_newlines_are_folded() -> None:
             n["name"] = '"tricky" name\nwith newline'
             break
     m = Model.from_dict(raw)
+    found_newline_fold = False
     for view in mermaid.to_c4_views(m):
         for line in view.text.splitlines():
             # The injected " should have been folded to '
             assert '"tricky"' not in line, f"bare double-quote in: {line!r}"
-            # No embedded newline within a line (trivially true since we split on \\n,
-            # but guards against a future fold_quotes regression)
-            assert "\n" not in line
+            # When agatha appears in this view its line must contain "with newline"
+            # (the \n was folded to a space).  If fold_quotes stopped folding \n,
+            # the name would split across two lines and "with newline" would be on
+            # its own line without "tricky", so the line-by-line quote check would
+            # still pass — this assertion catches that regression.
+            if "agatha" in line and not line.strip().startswith("Rel("):
+                assert "with newline" in line, f"folded newline not in agatha line: {line!r}"
+                found_newline_fold = True
+    assert found_newline_fold, "agatha did not appear in any mermaid view"
 
 
 def test_non_c4_model_is_refused() -> None:

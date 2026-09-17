@@ -1,13 +1,13 @@
 """Golden digests for the agatha drawio views.
 
-``drawio_golden.json`` was recorded from the current exporter output on
-2026-09-17, before the _outside group removal (commit 5) and the package split
-(commit 6).  The digest is a SHA-256 of the XML string.  Any change to the XML
-for a view must be explained in the commit message and the fixture re-recorded.
+These tests are a **refactoring safety net**, not a behavioral contract.
+They catch accidental pixel-level XML regressions that no higher-level assertion
+(connectivity, nesting, style presence) would catch.  A digest change means the
+XML changed; it does not mean behavior changed.
 
-Commit 5 re-records the C2 and C3 digests (externals shift by a few pixels when
-the virtual group is dropped); C1 must not change.  Commit 6 must leave all
-three digests byte-identical.
+``drawio_golden.json`` was recorded from the exporter output on 2026-09-17.
+The digest is a SHA-256 of the XML string.  Any change must be explained in the
+commit message that re-records the fixture.
 """
 
 from __future__ import annotations

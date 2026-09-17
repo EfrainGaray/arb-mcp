@@ -237,14 +237,25 @@ This direction is lossy for exactly those.
 **Returns, `to="mermaid"`.** JSON with the same envelope as `drawio` but with a
 `mermaid` key instead of `xml` per view — the Mermaid C4 diagram text that GitHub
 and GitLab render natively. Requires a C4 model; UML and deployment models are refused
-with an informative error. The scoping (which elements appear at C1/C2/C3, how
-relations are lifted) is shared with the drawio exporter so the two cannot diverge.
+with the body below. The scoping (which elements appear at C1/C2/C3, how relations are
+lifted) is shared with the drawio exporter so the two cannot diverge.
+
+Minimum Mermaid version: **9.4** (C4Context / C4Container / C4Component keywords).
+GitHub and GitLab bundle Mermaid ≥ 10.0, which also resolved boundary-alias `Rel`
+rendering (mermaid-js/mermaid#4864, merged 2026-08-18).
 ```json
 { "views": [
     { "level": "C1", "scope": "system-landscape", "name": "Acme — C1 System Context",
       "mermaid": "C4Context\n    title Acme — C1 System Context\n    …" },
     … ] }
 ```
+
+**Returns, non-C4 model with `to="mermaid"`.**
+```json
+{ "ok": false, "error": "mermaid supports C4 models only", "formats": ["drawio", "structurizr", "mermaid"] }
+```
+Note: `formats` is present for consistency with the unknown-target envelope; it does
+not imply the format name was wrong.  The source is a non-C4 model (UML, deployment).
 
 **Returns, unknown target.**
 ```json

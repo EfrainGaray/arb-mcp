@@ -95,12 +95,12 @@ def _node_stmt(node: Node, shape: str, indent: str = _INDENT) -> str:
 
 
 def _boundary_stmts(focus: Node, inside: tuple[Node, ...], indent: str = _INDENT) -> list[str]:
-    shape = _BOUNDARY_SHAPE.get(focus.type, "System_Boundary")
+    shape = _BOUNDARY_SHAPE[focus.type]
     n = fold_quotes(focus.name)
     inner = indent + _INDENT
     lines: list[str] = [f'{indent}{shape}({focus.id}, "{n}") {{']
     for node in inside:
-        child_shape = _INSIDE_SHAPE.get(node.type, "Component")
+        child_shape = _INSIDE_SHAPE[node.type]
         lines.append(_node_stmt(node, child_shape, inner))
     lines.append(f"{indent}}}")
     return lines
@@ -124,13 +124,13 @@ def _to_diagram(view: C4View) -> MermaidDiagram:
     if view.focus is None:
         # C1: all tops drawn as themselves; no boundary wrapper
         for node in view.inside:
-            shape = _INSIDE_SHAPE.get(node.type, "System")
+            shape = _INSIDE_SHAPE[node.type]
             lines.append(_node_stmt(node, shape))
     else:
         # C2/C3: focus wrapped in a boundary, externals outside
         lines.extend(_boundary_stmts(view.focus, view.inside))
         for node in view.externals:
-            shape = _EXT_SHAPE.get(node.type, "System_Ext")
+            shape = _EXT_SHAPE[node.type]
             lines.append(_node_stmt(node, shape))
 
     lines.extend(_rel_stmt(edge) for edge in view.edges)

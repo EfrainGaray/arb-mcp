@@ -186,7 +186,12 @@ def test_every_accepted_model_exports_to_syntactically_closed_mermaid(
     same diagram."""
     model = load(json.dumps(raw))
     for view in mermaid.to_c4_views(model):
-        declared: set[str] = set()
+        # shape_ids: ids declared via non-boundary node statements (Person, System, …)
+        # boundary_ids: ids declared via boundary wrappers (System_Boundary, Container_Boundary)
+        # Both are valid Rel endpoints; the exporter intentionally emits Rel(user, sys, …)
+        # where sys is the focus boundary (kept per product decision, finding 7).
+        shape_ids: set[str] = set()
+        boundary_ids: set[str] = set()
         depth = 0
         for line in view.text.splitlines():
             if not line.strip():
@@ -194,23 +199,27 @@ def test_every_accepted_model_exports_to_syntactically_closed_mermaid(
             assert _any_pattern(line), f"unrecognised Mermaid line: {line!r}"
             if line.rstrip().endswith("{"):
                 depth += 1
-                # extract declared id: first token inside the parentheses
+                # boundary wrapper: id declared separately from the shapes inside
                 m = re.search(r"\((\w+),", line)
                 if m:
-                    declared.add(m.group(1))
+                    boundary_ids.add(m.group(1))
             elif line.strip() == "}":
                 depth -= 1
             else:
                 # non-boundary node or Rel
                 m2 = re.search(r"\((\w+),", line)
                 if m2 and not line.strip().startswith("Rel("):
-                    declared.add(m2.group(1))
+                    shape_ids.add(m2.group(1))
         assert depth == 0, f"unbalanced braces in {view.scope!r} view"
-        # every Rel endpoint must be declared
+        # every Rel endpoint must be a shape alias or a boundary alias
         for m3 in re.finditer(r"Rel\((\w+),\s*(\w+),", view.text):
             src, tgt = m3.group(1), m3.group(2)
-            assert src in declared, f"Rel source {src!r} not declared in {view.scope!r}"
-            assert tgt in declared, f"Rel target {tgt!r} not declared in {view.scope!r}"
+            assert src in shape_ids or src in boundary_ids, (
+                f"Rel source {src!r} not declared in {view.scope!r}"
+            )
+            assert tgt in shape_ids or tgt in boundary_ids, (
+                f"Rel target {tgt!r} not declared in {view.scope!r}"
+            )
 
 
 @settings(max_examples=40, deadline=None)

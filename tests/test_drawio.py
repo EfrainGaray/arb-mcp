@@ -84,12 +84,11 @@ def _geom(elem: ET.Element) -> tuple[int, int, int, int]:
 
 
 def test_c2_externals_without_layout_form_a_column_below_the_boundary_and_never_overlap() -> None:
-    """Characterization test written before commit 5 (_outside group removal).
+    """Refactoring safety net for external element placement.
 
-    Asserts ordering and non-overlap, not exact pixel values, so it survives the
-    small position shift when the virtual group is dropped.  After the removal the
-    externals' x/y change by a few pixels; the column ordering and non-overlap
-    properties must still hold."""
+    Asserts ordering and non-overlap (the invariant), not exact pixel values, so
+    it survives layout shifts from internal refactors.  This is not a contract on
+    coordinates; a digest test (test_drawio_golden.py) guards exact bytes."""
     views = drawio_views(load((FIX / "agatha.json").read_text("utf-8")))
     c2 = next(v for v in views if v["level"] == "C2")
     root = ET.fromstring(c2["xml"])

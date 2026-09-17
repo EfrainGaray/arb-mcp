@@ -151,6 +151,9 @@ def test_ctx_is_not_in_the_tool_input_schema() -> None:
     """The SDK must strip 'ctx' from the published tool input schemas."""
     from arb_mcp.infra.mcp.stdio_server import mcp
 
+    # mcp.list_tools() is async; in this sync test suite we reach the same data
+    # through the internal ToolManager.  That method is sync in SDK 1.26.0 —
+    # verified in .venv/lib/…/mcp/server/mcpserver/server.py.
     tools = mcp._tool_manager.list_tools()
     for tool in tools:
         schema = tool.parameters

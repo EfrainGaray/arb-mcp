@@ -15,6 +15,7 @@ def fold_quotes(text: str) -> str:
     - ``"``  →  ``'``  (both notations have no string-escape syntax)
     - ``\\n``, ``\\r``  →  ``" "``  (a newline inside a quoted arg corrupts the line)
 
-    The transformation is lossy but legible and guarantees round-trip safety.
+    The transformation is lossy but legible.  Callers accept that these two
+    characters cannot be round-tripped.
     """
-    return str(text).replace('"', "'").replace("\n", " ").replace("\r", " ")
+    return text.replace('"', "'").replace("\n", " ").replace("\r", " ")
