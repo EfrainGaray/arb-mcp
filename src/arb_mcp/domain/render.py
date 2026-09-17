@@ -30,6 +30,10 @@ class Grid:
     # last child sits on top of it and the container goes unnamed, which is
     # exactly what the first exported file showed when opened.
     label_room: int = 70
+    # The gap between ranks when reading sideways. An edge label is wide and
+    # short: between rows its height has to clear, between columns its width
+    # does. Sharing rank_gap for both put every label on top of its target.
+    edge_label_room: int = 160
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +58,7 @@ class RenderProfile:
                 rank_gap=int(g.get("rankGap", 80)),
                 order_gap=int(g.get("orderGap", 60)),
                 label_room=int(g.get("labelRoom", 70)),
+                edge_label_room=int(g.get("edgeLabelRoom", 160)),
             ),
             boundary_size=sizes.get("boundary") or default,
         )

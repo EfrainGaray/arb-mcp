@@ -88,6 +88,7 @@ def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolv
     # its own label along the reading axis. Transposed, the two swap over.
     room = grid.rank_gap // 2 + grid.label_room
     grow_w, grow_h = (room, grid.order_gap) if horizontal else (grid.order_gap, room)
+    rank_gap = grid.edge_label_room if horizontal else grid.rank_gap
 
     def place(parent: str | None) -> Size:
         """Place one level in the parent's own coordinates; return the box it needed."""
@@ -115,8 +116,8 @@ def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolv
                 x += w + grid.order_gap
                 row_h = max(row_h, h)
             total_w = max(total_w, x - x0 - grid.order_gap)
-            y += row_h + grid.rank_gap
-        total_h = y - (grid.rank_gap // 2 if parent is not None else 0) - grid.rank_gap
+            y += row_h + rank_gap
+        total_h = y - (grid.rank_gap // 2 if parent is not None else 0) - rank_gap
         return total_w, total_h
 
     w, h = place(None)

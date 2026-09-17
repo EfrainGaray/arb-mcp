@@ -196,3 +196,25 @@ def test_flat_level_name_for_a_spec_that_is_neither_uml_nor_deployment() -> None
         }
     )
     assert drawio.to_views(model)[0].level == "Diagram"
+
+
+def test_reading_sideways_leaves_room_for_an_edge_label_between_ranks() -> None:
+    """An edge label is wide and short. Between rows its height has to clear;
+    between columns its width does, and that is several times larger.
+
+    One gap served both, so a right-flowing diagram put every label on top of
+    the box it pointed at.
+    """
+    cajas = (Box("a", None, (240, 120)), Box("b", None, (240, 120)))
+    celdas = (Placement("a", 0, 0), Placement("b", 1, 0))
+    grid = Grid(rank_gap=80, order_gap=60, label_room=70, edge_label_room=160)
+
+    abajo = resolve(cajas, Layout("down", placements=celdas), grid)
+    a_ab, b_ab = abajo.get("a"), abajo.get("b")
+    assert a_ab and b_ab
+    assert b_ab.y - (a_ab.y + a_ab.h) == grid.rank_gap
+
+    lado = resolve(cajas, Layout("right", placements=celdas), grid)
+    a_la, b_la = lado.get("a"), lado.get("b")
+    assert a_la and b_la
+    assert b_la.x - (a_la.x + a_la.w) == grid.edge_label_room

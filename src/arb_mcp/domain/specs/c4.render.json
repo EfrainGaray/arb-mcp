@@ -4,7 +4,7 @@
   "version": "1.0",
   "spec": "c4.spec.json",
   "units": "px",
-  "grid": { "rankGap": 80, "orderGap": 60, "labelRoom": 70 },
+  "grid": { "rankGap": 80, "orderGap": 60, "labelRoom": 70, "edgeLabelRoom": 180 },
   "nodeTypes": {
     "person":         { "size": [200, 180], "shape": "mxgraph.c4.person2", "fill": "#083F75", "stroke": "#06315C", "text": "#ffffff" },
     "softwareSystem": { "size": [240, 120], "shape": "rounded",            "fill": "#1061B0", "stroke": "#0D5091", "text": "#ffffff" },
