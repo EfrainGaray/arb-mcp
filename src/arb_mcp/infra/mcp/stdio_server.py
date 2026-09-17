@@ -19,7 +19,7 @@ from ...application.check_catalog import check_catalog as _check_catalog
 from ...application.convert_model import FORMATS, convert_source
 from ...application.validate_model import validate_source
 from ...domain import loading
-from ...domain.loading import SCHEMA, ModelError
+from ...domain.loading import CANONICAL_FORM, SCHEMA, ModelError
 from ..leanix import from_env
 
 mcp = MCPServer("arb-mcp")
@@ -33,7 +33,11 @@ def describe_contract() -> str:
     An agent calls this first so it drafts elements of the right shape, instead
     of guessing. This is the deterministic replacement for a generation prompt.
     """
-    return json.dumps({"spec": C4_SPEC, "schema": SCHEMA}, ensure_ascii=False, indent=2)
+    return json.dumps(
+        {"spec": C4_SPEC, "schema": SCHEMA, "canonical_form": CANONICAL_FORM},
+        ensure_ascii=False,
+        indent=2,
+    )
 
 
 @mcp.tool()

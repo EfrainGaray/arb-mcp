@@ -5,6 +5,8 @@ it sits in the flow. Written against the code in `src/arb_mcp/infra/mcp/stdio_se
 and the use cases it calls, not against the README. Where the two disagree,
 `docs/AUDIT-2026-09-08.md` records it.
 
+The JSON Schema is normative and schema-valid JSON is the canonical model and the interchange form. Structurizr DSL is an accepted input surface and what it cannot carry is reported as lost, never dropped silently. drawio, Structurizr DSL and Mermaid are exports over the validated model, with round-trip guaranteed for what each notation can express.
+
 The server registers **five** tools. It has no LLM and calls none: the host (Kiro,
 CI, a script) does the thinking, these tools supply the ground truth. Every tool
 returns **one text payload**. It is JSON for every call except

@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import re
 from importlib.resources import files
-from typing import Any
+from typing import Any, Final
 
 import jsonschema
 
@@ -24,6 +24,22 @@ from .model import Model
 SCHEMA: dict[str, Any] = json.loads(
     (files("arb_mcp.domain.schema") / "architecture.schema.json").read_text("utf-8")
 )
+
+
+CANONICAL_FORM: Final[str] = (
+    "The JSON Schema is normative and schema-valid JSON is the canonical model and the "
+    "interchange form. "
+    "Structurizr DSL is an accepted input surface and what it cannot carry is reported "
+    "as lost, never dropped silently. "
+    "drawio, Structurizr DSL and Mermaid are exports over the validated model, with "
+    "round-trip guaranteed for what each notation can express."
+)
+"""The contract that ``load()`` guarantees, stated once in code.
+
+Any documentation that describes the authoring surface, the interchange form,
+or round-trip behaviour must quote this string verbatim — that is the gate
+that prevents the three half-statements from drifting again.
+"""
 
 
 class ModelError(ValueError):

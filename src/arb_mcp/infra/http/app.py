@@ -40,7 +40,7 @@ from ...application.check_catalog import check_catalog
 from ...application.convert_model import FORMATS, convert_source
 from ...application.validate_model import validate_source
 from ...domain import loading
-from ...domain.loading import SCHEMA, ModelError
+from ...domain.loading import CANONICAL_FORM, SCHEMA, ModelError
 from ..leanix import from_env
 from ..mcp.stdio_server import mcp as mcp_server
 from .auth import Authenticator, AuthError, StaticTokenAuth
@@ -167,7 +167,7 @@ def create_app(token: str | None = None, *, auth: Authenticator | None = None) -
     @app.get("/v1/contract", tags=["tools"])
     def contract() -> dict[str, Any]:
         """The C4 spec and the normative schema a design must satisfy."""
-        return {"spec": C4_SPEC, "schema": SCHEMA}
+        return {"spec": C4_SPEC, "schema": SCHEMA, "canonical_form": CANONICAL_FORM}
 
     @app.post("/v1/build", tags=["tools"])
     def build(body: BuildIn) -> Response:
