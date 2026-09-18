@@ -65,13 +65,13 @@ async def test_the_tool_line_carries_the_id_of_the_call_not_of_initialize(
         async with (
             app.router.lifespan_context(app),
             streamable_http_client(f"{BASE}/mcp/mcp", http_client=client) as (read, write),
+            ClientSession(read, write) as session,
         ):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                primera = len(sent)
-                await session.call_tool("validate_model", {"source": DSL})
-                segunda = len(sent)
-                await session.call_tool("validate_model", {"source": DSL})
+            await session.initialize()
+            primera = len(sent)
+            await session.call_tool("validate_model", {"source": DSL})
+            segunda = len(sent)
+            await session.call_tool("validate_model", {"source": DSL})
 
     lines = [json.loads(r.message) for r in caplog.records if r.name == "arb_mcp.audit"]
     tool_lines = [line for line in lines if line.get("tool") == "validate_model"]
