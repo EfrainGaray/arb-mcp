@@ -84,6 +84,29 @@ def _centre(placed: dict[str, Placed], spans: list[tuple[list[str], int]], wides
             placed[nid] = Placed(q.id, q.parent, q.x + shift, q.y, q.w, q.h, q.origin)
 
 
+def _mirror(out: list[Placed], *, horizontal: bool, total: int) -> list[Placed]:
+    """Reverse the reading order by mirroring along the axis the ranks advance on.
+
+    That axis is x once the page has been turned and y otherwise. Flipping y for
+    both mirrored the order *within* each rank and left the sequence alone, so
+    "left" drew exactly what "right" drew.
+
+    The mirror is taken inside the box that holds each level -- the parent's own
+    size, or the whole diagram at the top -- and not against how far the children
+    happened to reach, which drops the inset a container keeps around them and
+    lands the last child hard on the boundary at 0.
+    """
+    caja = {p.id: (p.w if horizontal else p.h) for p in out}
+
+    def espejo(p: Placed) -> Placed:
+        dentro = total if p.parent is None else caja.get(p.parent, 0)
+        if horizontal:
+            return Placed(p.id, p.parent, dentro - p.x - p.w, p.y, p.w, p.h, p.origin)
+        return Placed(p.id, p.parent, p.x, dentro - p.y - p.h, p.w, p.h, p.origin)
+
+    return [espejo(p) for p in out]
+
+
 def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolved:
     """Place every box. Coordinates come out RELATIVE to the parent, which is
     how drawio reads a nested cell, so nesting maps one to one."""
@@ -148,13 +171,7 @@ def resolve(boxes: tuple[Box, ...], layout: Layout | None, grid: Grid) -> Resolv
         out = [Placed(p.id, p.parent, p.y, p.x, p.h, p.w, p.origin) for p in out]
         w, h = h, w
     if layout and layout.direction in ("up", "left"):
-        extent = {p.parent: 0 for p in out}
-        for p in out:
-            extent[p.parent] = max(extent[p.parent], p.y + p.h)
-        out = [
-            Placed(p.id, p.parent, p.x, extent[p.parent] - p.y - p.h, p.w, p.h, p.origin)
-            for p in out
-        ]
+        out = _mirror(out, horizontal=horizontal, total=w if horizontal else h)
     return Resolved(tuple(out), w, h, tuple(missing))
 
 

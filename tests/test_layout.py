@@ -254,3 +254,52 @@ def test_a_rank_is_centred_against_the_widest_one() -> None:
     fila = (a.x, c.x + c.w)
     centro_fila = (fila[0] + fila[1]) / 2
     assert solo.x + solo.w / 2 == centro_fila
+
+
+def test_left_and_up_reverse_the_reading_axis_of_right_and_down() -> None:
+    """Reading backwards mirrors along the axis the ranks advance on.
+
+    The mirror always flipped y, which is the reading axis only when the page
+    runs down. Laid out sideways the ranks advance on x, so flipping y left the
+    order untouched: a left-flowing diagram came out identical to a right-flowing
+    one, and the schema accepts all four directions.
+    """
+    cajas = tuple(Box(n, None, (240, 120)) for n in ("a", "b", "c"))
+    celdas = tuple(Placement(n, i, 0) for i, n in enumerate(("a", "b", "c")))
+
+    def ejes(direccion: str) -> list[int]:
+        r = resolve(cajas, Layout(direccion, placements=celdas), GRID)
+        puestos = [r.get(n) for n in ("a", "b", "c")]
+        assert all(p is not None for p in puestos)
+        horizontal = direccion in ("right", "left")
+        return [p.x if horizontal else p.y for p in puestos if p is not None]
+
+    derecha, izquierda = ejes("right"), ejes("left")
+    abajo, arriba = ejes("down"), ejes("up")
+
+    assert derecha == sorted(derecha), "right: a, b, c across the page"
+    assert izquierda == sorted(izquierda, reverse=True), "left: c, b, a across the page"
+    assert abajo == sorted(abajo), "down: a, b, c down the page"
+    assert arriba == sorted(arriba, reverse=True), "up: c, b, a down the page"
+
+    # Mirroring moves the boxes, it does not squash the diagram.
+    assert sorted(izquierda) == derecha
+    assert sorted(arriba) == abajo
+
+
+def test_a_mirrored_child_keeps_the_padding_its_parent_reserves() -> None:
+    """Flipping happens inside the parent's own box, so the gap a container keeps
+    around its children survives the mirror instead of being eaten at one edge.
+
+    The mirror measured against how far the children reached rather than against
+    the parent, so the last of them landed hard on the boundary at 0.
+    """
+    cajas = (Box("sys", None, (240, 210)), Box("a", "sys", (240, 120)))
+    celdas = (Placement("a", 0, 0),)
+
+    abajo = resolve(cajas, Layout("down", placements=celdas), GRID)
+    arriba = resolve(cajas, Layout("up", placements=celdas), GRID)
+    a_ab, a_ar = abajo.get("a"), arriba.get("a")
+    assert a_ab and a_ar
+    assert a_ab.y > 0, "a child is inset from the top of its parent"
+    assert a_ar.y > 0, "and stays inset when the parent is read bottom-up"
