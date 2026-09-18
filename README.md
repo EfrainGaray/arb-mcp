@@ -62,15 +62,18 @@ the version or the changelog by hand.
 
 ## Making diagrams, from any agent
 
-Spec first, pictures second. [docs/DIAGRAMS.md](docs/DIAGRAMS.md) is the method
-end to end for an agent starting from an empty file: learn the contract, draft
-the design, hold it to the gate until it passes, and only then ask for the
-Structurizr DSL, the drawio views and the Mermaid. Works from Claude Code,
-Codex, Kiro, a script, or curl against `/mcp/mcp`.
+**Start here: [docs/DIAGRAMS.md](docs/DIAGRAMS.md).** Spec first, pictures
+second — the method end to end for an agent starting from an empty file: learn
+the contract, draft the design, hold it to the gate until it passes, and only
+then ask for the Structurizr DSL, the drawio views and the Mermaid. It ends with
+**the prompt you paste into an agent** to make it do all of that, and what that
+prompt returned on a system it had never seen. Works from Claude Code, Codex,
+Kiro, a script, or curl against `/mcp/mcp`.
 
 The C1/C2/C3 views of arb-mcp's own architecture in `examples/out/` were produced
 that way, from `examples/arb-mcp.json` — which is the artefact; the exports are
-regenerated from it.
+regenerated from it by `python examples/generar.py`, and a test fails if they
+drift by one byte.
 
 ## The tools (how Kiro uses it)
 

@@ -127,6 +127,73 @@ and `tests/test_examples.py` fails if a single byte drifts. The three `.svg` and
 are not the server's output. If a spec and its exports ever disagree, the spec
 wins and the exports get rebuilt.
 
+## 4. The prompt
+
+Everything above is the mechanism. In practice you do not call these tools by
+hand — you tell an agent what you want and it drives them. Paste this, replacing
+the last paragraph with your own subject:
+
+> You have the `arb` MCP server. Produce the C4 diagrams for what I describe
+> below, working spec first.
+>
+> 1. Call `describe_contract()` and read which node types, relation types and
+>    required properties exist. Do not invent types; use only what it returns.
+> 2. Draft the design from my description: `nodes` (nested — containers inside a
+>    software system, components inside a container) and `relations` between
+>    them. Give every element a real `description`, every container and relation
+>    a `technology`, and every node that has children a `docs` entry saying WHY
+>    it exists, not what it contains. Add a `decision` node per significant
+>    choice, with `status`, and an `affects` relation from it to what it decides.
+> 3. Call `build_model_tool(nodes, relations, name)`. If `may_merge` is false,
+>    read `findings`, fix the design, and call it again. Do not go on until it is
+>    true — a rejected design is a real defect, not a formality to bypass.
+> 4. Only then call `convert_model(source, to)` three times, with `to` set to
+>    `structurizr`, `drawio` and `mermaid`. Save the DSL as one file, and each
+>    view in the `views` array to its own file named `<level>-<scope>`.
+> 5. Report what you saved, and which findings you had to fix to get there.
+>
+> Break a container into components only where the detail earns a diagram; every
+> container with components produces its own C3. Never draw first, and never
+> hand me a diagram whose model did not pass.
+>
+> The system to model is: **<your description here>**
+
+### What that prompt actually does
+
+Run against "a court-booking system for a sports club", the first draft came back
+rejected — which is the normal case, not a failure:
+
+```
+PRIMER BORRADOR -> may_merge: False
+   ERROR  model.softwareSystem.documentation  app
+   ERROR  model.softwareSystem.decisions      app
+```
+
+Two named defects on a named element: the system has containers but says nothing
+about why it exists, and no decision backs it. Adding a `docs` entry ("courts
+were booked by phone and got oversold; a slot is confirmed against payment, not
+before") and a `decision` node with an `affects` relation was enough:
+
+```
+SEGUNDO INTENTO -> may_merge: True | hallazgos: 0
+   structurizr: DSL de 700 chars
+   drawio:  ['C1:system-landscape', 'C2:app']
+   mermaid: ['C1:system-landscape', 'C2:app']
+```
+
+Two views, not three: neither container was broken into components, so there is
+no C3 to draw. Nobody asked for "two diagrams" — the model decided.
+
+Two things worth knowing about that prompt. Step 3 is the one that does the
+work: a first draft is usually rejected, and each rejection names a rule and the
+element it fired on, so the agent has something specific to fix rather than a
+vague instruction to try harder. And the last paragraph is what decides how many
+diagrams you get — an agent told to break everything down will hand you eight
+C3s nobody reads.
+
+If you want the diagrams as files on disk with no agent involved,
+`examples/generar.py` is that same sequence written out.
+
 ## The two calls, in detail
 
 A model is a JSON document against the normative schema, or Structurizr DSL —
