@@ -162,15 +162,42 @@ the last paragraph with your own subject:
 >    software system, components inside a container) and `relations` between
 >    them. Give every element a real `description`, every container and relation
 >    a `technology`, and every node that has children a `docs` entry saying WHY
->    it exists, not what it contains. Add a `decision` node per significant
+>    it exists, not what it contains. Keep each relation's `description` to a
+>    short verb phrase — "Books an appointment", not a sentence: it is drawn as
+>    a label on the arrow and a long one covers the boxes around it. The detail
+>    belongs in the `docs` of the element, which has room for it. Add a `decision` node per significant
 >    choice, with `status`, and an `affects` relation from it to what it decides.
 > 3. Call `build_model_tool(nodes, relations, name)`. If `may_merge` is false,
 >    read `findings`, fix the design, and call it again. Do not go on until it is
 >    true — a rejected design is a real defect, not a formality to bypass.
-> 4. Only then call `convert_model(source, to)` three times, with `to` set to
->    `structurizr`, `drawio` and `mermaid`. Save the DSL as one file, and each
->    view in the `views` array to its own file named `<level>-<scope>`.
-> 5. Report what you saved, and which findings you had to fix to get there.
+> 4. Add a `views` entry per diagram with an explicit `layout`, or every box
+>    lands in one column and the picture is unreadable. Each view needs
+>    `include` (`"*"` for the landscape, `{"inside": "<id>"}` otherwise) and a
+>    `layout` with a `direction` and one `{node, rank, order}` per element:
+>    `rank` is the reading depth, `order` the position ACROSS it. Elements that
+>    do not depend on each other share a `rank` and differ in `order` — giving
+>    each one its own `rank` is what produces a single unreadable column. Two
+>    actors side by side, then the system, then the externals side by side:
+>
+>    ```json
+>    {"direction": "down", "placements": [
+>      {"node": "patient", "rank": 0, "order": 0},
+>      {"node": "clerk",   "rank": 0, "order": 1},
+>      {"node": "system",  "rank": 1, "order": 0},
+>      {"node": "hr",      "rank": 2, "order": 0},
+>      {"node": "sms",     "rank": 2, "order": 1}
+>    ]}
+>    ```
+>
+>    Use `direction: "right"` for a chain of layers and `"down"` for a
+>    landscape. Include the external elements each view reaches, not only what
+>    is inside it.
+> 5. Only then call `convert_model(source, to)` three times, with `to` set to
+>    `structurizr`, `drawio` and `mermaid`. Save the canonical model itself as
+>    JSON — that is the artefact, and the DSL cannot carry documentation,
+>    decisions or scope — plus each view in the `views` array to its own file
+>    named `<level>-<scope>`.
+> 6. Report what you saved, and which findings you had to fix to get there.
 >
 > Break a container into components only where the detail earns a diagram; every
 > container with components produces its own C3. Never draw first, and never
