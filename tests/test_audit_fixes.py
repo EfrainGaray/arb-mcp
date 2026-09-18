@@ -1,4 +1,4 @@
-"""Regressions for Fable's integral audit (A1-A4). Each fails before its fix."""
+"""Regressions from the integral audit (A1-A4). Each fails before its fix."""
 
 from typing import Any
 from xml.etree import ElementTree as ET

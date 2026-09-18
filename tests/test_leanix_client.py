@@ -1,4 +1,4 @@
-"""LeanIX adapter with urlopen mocked — no network. Covers Fable M1/M2/B1."""
+"""LeanIX adapter with urlopen mocked — no network. Covers audit M1/M2/B1."""
 
 import io
 import json

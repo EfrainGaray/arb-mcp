@@ -1,4 +1,4 @@
-"""Regressions for Fable's second audit: referential integrity and cell ids."""
+"""Regressions from the second audit: referential integrity and cell ids."""
 
 import json
 from typing import Any
@@ -79,7 +79,7 @@ def test_build_model_does_not_mutate_callers_relations() -> None:
 
 
 def test_excessive_nesting_is_a_model_error() -> None:
-    """Fable B2: agent-generated deep nesting fails as ModelError, not RecursionError."""
+    """Audit B2: agent-generated deep nesting fails as ModelError, not RecursionError."""
     from arb_mcp.domain.loading import ModelError, load
 
     node: dict[str, Any] = {"id": "n0", "type": "deploymentNode", "name": "n"}
