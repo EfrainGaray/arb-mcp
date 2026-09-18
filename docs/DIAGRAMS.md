@@ -87,6 +87,7 @@ build_model_tool -> ok: True | may_merge: False | hallazgos: 5
     ERROR   model.softwareSystem.decisions      tienda
     WARNING model.person.description            cliente
     WARNING model.softwareSystem.description    tienda
+    WARNING model.container.description         web
 ```
 
 `ok: True` means the draft became a valid model; `may_merge: False` means the
@@ -196,7 +197,8 @@ the last paragraph with your own subject:
 >    `structurizr`, `drawio` and `mermaid`. Save the canonical model itself as
 >    JSON — that is the artefact, and the DSL cannot carry documentation,
 >    decisions or scope — plus each view in the `views` array to its own file
->    named `<level>-<scope>`.
+>    named `<level>-<scope>`, with `.drawio` for the drawio views, `.mmd` for
+>    Mermaid and `.dsl` for the Structurizr text.
 > 6. Report what you saved, and which findings you had to fix to get there.
 >
 > Break a container into components only where the detail earns a diagram; every
