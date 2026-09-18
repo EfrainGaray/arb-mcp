@@ -15,11 +15,18 @@ exactly this way.
 
 ## 1. Install
 
-    pipx install arb-mcp            # or: pip install arb-mcp
-    arb-mcp                         # speaks MCP over stdio on stdin/stdout
+Not on PyPI yet, so install it from the repository:
 
-No API key and no LLM: the server calls none. HTTP is the other transport, for
-CI; see [AUTH.md](AUTH.md).
+    pipx install git+https://github.com/EfrainGaray/arb-mcp.git
+    # or, from a clone:
+    python -m venv .venv && . .venv/bin/activate && pip install .
+
+That puts `arb-mcp` on the PATH; it speaks MCP over stdio on stdin/stdout. For
+the HTTP transport, install the extra — `pip install '.[http]'` — which brings
+FastAPI and uvicorn and adds `arb-mcp-http`.
+
+No API key and no LLM: the server calls none. See [AUTH.md](AUTH.md) for the
+HTTP transport's authentication.
 
 ## 2. Register it with your agent
 
@@ -113,8 +120,12 @@ GitHub and GitLab. All three come from the same validated model, so a diagram
 and its verdict cannot drift apart.
 
 **What to keep in version control:** the spec. `examples/arb-mcp.json` is 14 KB
-of reviewable text; the nine files in `examples/out/` are regenerated from it
-with two calls. If they ever disagree, the spec wins and the exports get rebuilt.
+of reviewable text. The seven exports beside it in `examples/out/` — three
+drawio, three Mermaid and the DSL — are regenerated from it by asking the server,
+and `tests/test_examples.py` fails if a single byte drifts. The three `.svg` and
+`index.html` in that directory are rendered afterwards (see the last section) and
+are not the server's output. If a spec and its exports ever disagree, the spec
+wins and the exports get rebuilt.
 
 ## The two calls, in detail
 
@@ -173,9 +184,10 @@ as its own, not as generic boxes.
 
 ## A worked run
 
-`lab/scratch/por_mcp.py` in this repo does the whole thing over real stdio: it
-spawns the server as a subprocess, validates, and writes the three drawio views,
-the three mermaid views and the DSL. Its output on this model:
+`examples/generar.py` does the whole thing over real stdio: it spawns the server
+as a subprocess, validates, and writes the three drawio views, the three Mermaid
+views and the DSL. Run it with `python examples/generar.py`; its output on this
+model:
 
     herramientas: ['describe_contract', 'build_model_tool', 'validate_model', 'convert_model', 'check_catalog']
     validate_model -> may_merge=True hallazgos=0
@@ -279,7 +291,10 @@ for vista in json.loads(respuesta["result"]["content"][0]["text"])["views"]:
     arb-mcp-c3-dominio.drawio
 
 Three surfaces requested this way — drawio, mermaid and structurizr — produce the
-files in `examples/out/` byte for byte, which is how that directory is checked.
+seven exports in `examples/out/` byte for byte. `tests/test_examples.py` pins
+that: it re-exports the model and fails if a committed file differs, trailing
+newline included, so the page cannot go on claiming this after it stops being
+true.
 
 Three notes that cost time if you find them yourself:
 
@@ -296,11 +311,17 @@ There is also a plain REST surface for hosts that do not speak MCP —
 
 ## From drawio XML to SVG
 
-The XML opens in diagrams.net as it is. To get a self-contained SVG without a
-round trip through the app, render it through drawio's own viewer engine and ask
-the graph for its SVG — `lab/diagrams/render.mjs` does this with a local copy of
-`viewer-static.min.js`, so nothing leaves the machine. Anything else draws C4
-shapes that only look similar.
+The XML opens in diagrams.net as it is, and that is the supported path. The
+`.svg` files in `examples/out/` were rendered separately so the README can show
+a picture without sending anything anywhere: drawio's own viewer engine
+(`viewer-static.min.js`, a 4 MB bundle that is deliberately NOT vendored here)
+loaded in a headless browser, then `graph.getSvg()`.
+
+That bundle and the few lines of Playwright that drive it are not part of this
+repository, so treat the SVGs as a convenience, not as server output — the three
+`.svg` and `index.html` are the only files in that directory the MCP did not
+produce. Any other renderer draws shapes that merely resemble C4; the C4 palette,
+the `c4Type` metadata and the person silhouette come from drawio itself.
 
 ## Related
 

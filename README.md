@@ -1,8 +1,9 @@
 # arb-mcp
 
 Architecture Review Board MCP. A Python MCP server that validates and converts
-C4/architecture designs. It is the engine of a Kiro Power
-(POWER.md + this server + hooks).
+C4/architecture designs: the design is written as data, a deterministic gate
+decides whether it may merge, and every notation is exported from the model that
+passed. Drive it from any MCP host — see [docs/DIAGRAMS.md](docs/DIAGRAMS.md).
 
 The JSON Schema is normative and schema-valid JSON is the canonical model and the interchange form. Structurizr DSL is an accepted input surface and what it cannot carry is reported as lost, never dropped silently. drawio, Structurizr DSL and Mermaid are exports over the validated model, with round-trip guaranteed for what each notation can express.
 

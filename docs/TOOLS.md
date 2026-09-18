@@ -53,9 +53,11 @@ surface can carry.
 
 **Notes.** The spec returned is exactly what `build_model_tool` will enforce, so a
 host that reads `spec.nodeTypes` and uses only those types cannot get a type error
-later. Today that spec has four node types (`person`, `softwareSystem`, `container`,
-`component`); `decision` and `deploymentNode` exist in the schema and in the lab spec
-but not here — see audit M3.
+later. Today that spec has seven node types: the four C4 elements (`person`,
+`softwareSystem`, `container`, `component`), plus `deploymentNode`,
+`infrastructureNode` and `decision`. Only the four C4 ones are ever DRAWN in a
+C1/C2/C3 view — a decision record is metadata about the design, not a box in it —
+but all seven are valid in a model and carried through the canonical form.
 
 ---
 
@@ -229,7 +231,7 @@ one C3 per container. Never one file with tabs: a bank stores, reviews and versi
 each level on its own.
 ```json
 { "views": [
-    { "level": "C1", "scope": "landscape", "name": "System Context", "xml": "<mxfile …>" },
+    { "level": "C1", "scope": "system-landscape", "name": "System Context", "xml": "<mxfile …>" },
     { "level": "C2", "scope": "billing",   "name": "Billing — Containers", "xml": "…" },
     { "level": "C3", "scope": "api",       "name": "API — Components", "xml": "…" } ] }
 ```
@@ -333,21 +335,21 @@ probabilistic part — is on the path to the verdict.
 
 ---
 
-## Lab tools not yet promoted (geometry layer)
+## The geometry layer, and what it deliberately leaves out
 
-Built on 2026-09-08 in `~/lab/2026-08-20-dsl-arquitectura/spec/tools/`, on the same
-engine this repo vendors. They are the next thing to promote, once the vendored copy
-is refreshed (audit H1). Listed so nobody rebuilds them.
+The layout engine lives in `domain/layout.py`: it turns `rank`/`order` cells into
+rectangles with pure arithmetic and no solver, so two implementations cannot
+disagree. A node a view returns and the layout omits is placed after the last
+rank and marked `derived`. Sizes and grid gaps come from a render profile
+(`domain/specs/c4.render.json`) that **the model never references** — the caller
+picks it, which is what keeps pixels out of the design.
 
-| tool | what it does | belongs to |
-|---|---|---|
-| `resolve_layout.py` | turns `rank`/`order` cells into rectangles — pure arithmetic, no solver. A node the view returns and the layout omits is placed after the last rank and marked `derived`. | domain (standard) |
-| `ordinal_inspections.py` | the layout rules that never touch a pixel: `duplicate-cell`, `rank-gap`, `backward-edge`, `edge-crossing` counted the Sugiyama way (endpoints in opposite order between adjacent ranks). Their fix is always "change a rank/order". | domain (standard) |
-| `render_inspections.py` | render QA against a profile: containment, sibling overlap, edge through a foreign node, label on a route; plus corridor/rhythm/frame-hugging for orthogonal routing. Their fix is always "move N units". May report a bad drawing, may never propose a model change. | exporter |
-| `layout_geometry.py` | the pure primitives (rects, segments, collinear overlap, clearance) the two above share. Ported from tt-a1i/archify (MIT). | exporter |
-| `to_drawio.py` | drawio exporter driven by cells, geometry **relative to the parent cell**, sizes from `examples/c4.render.json`; verified by opening the file in drawio. | exporter — to merge with `domain/drawio/` package (audit H4) |
-| `check_drawio.py` | reads a `.drawio` the way drawio does: parent missing or declared after the child, child geometry outside its parent, dangling edge endpoint, duplicate id. | exporter QA |
-| `examples/c4.render.json` | the render profile: per-type size, shape, colours, grid gaps. **The model never references it**; the caller picks it. | render profile |
+What is NOT here, on purpose: render QA (containment, sibling overlap, an edge
+crossing a foreign node, a label sitting on a route) and anything whose fix is
+"move N units". Those belong to an exporter, not to a standard, and carrying them
+would mean maintaining a routing engine in every language that implements this.
+The ordinal rules whose fix is "change a rank or an order" are the ones that
+could join the deterministic gate.
 
 Measured reason the layer exists: across dagre, elk and Graphviz on the same graph,
 vertical **order** survives (0–1.1 % of pairs invert) while coordinates do not (only
