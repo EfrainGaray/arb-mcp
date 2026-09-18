@@ -8,20 +8,29 @@ from __future__ import annotations
 
 from ..layout import Box, Resolved
 from ..layout import resolve as _resolve
-from ..model import All, Inside, Layout, Model
+from ..model import All, ByTag, ByType, Inside, Layout, Model
 from ..render import RenderProfile
 
 
 def layout_for(model: Model, focus: str | None) -> Layout | None:
-    """The authored layout of the view over ``focus`` (``None`` = the landscape)."""
+    """The authored layout of the view over ``focus`` (``None`` = the landscape).
+
+    The landscape takes the geometry of any view that does not zoom into a node:
+    a context view is free to select its members with ``*`` or by type, and both
+    describe the same picture. Recognising only ``*`` dropped the layout of a
+    view that listed its types -- silently, so the model was right and the
+    diagram came out as a single column.
+    """
     for v in model.views:
         if v.layout is None:
             continue
-        for q in v.include:
-            if focus is None and isinstance(q, All):
+        adentro = [q for q in v.include if isinstance(q, Inside)]
+        if focus is None:
+            if not adentro and any(isinstance(q, All | ByType | ByTag) for q in v.include):
                 return v.layout
-            if isinstance(q, Inside) and q.node == focus:
-                return v.layout
+            continue
+        if any(q.node == focus for q in adentro):
+            return v.layout
     return None
 
 

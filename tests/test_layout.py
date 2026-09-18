@@ -303,3 +303,68 @@ def test_a_mirrored_child_keeps_the_padding_its_parent_reserves() -> None:
     assert a_ab and a_ar
     assert a_ab.y > 0, "a child is inset from the top of its parent"
     assert a_ar.y > 0, "and stays inset when the parent is read bottom-up"
+
+
+def test_the_landscape_takes_its_layout_from_any_top_level_view() -> None:
+    """A context view can select its members however it likes -- `*`, or by type
+    -- and its geometry has to be honoured either way.
+
+    Only `*` was recognised, so a view that listed `{"type": "person"}` and
+    `{"type": "softwareSystem"}` had its layout silently dropped and the C1 came
+    out as one column. Silently is the part that matters: the model was right and
+    the picture was wrong.
+    """
+    crudo = {
+        "version": "1.0",
+        "scope": "system",
+        "spec": {
+            "nodeTypes": {
+                "person": {"contains": []},
+                "softwareSystem": {"contains": ["container"]},
+                "container": {"contains": []},
+            },
+            "relationTypes": {"uses": {}},
+        },
+        "nodes": [
+            {"id": "a", "type": "person", "name": "A"},
+            {"id": "b", "type": "person", "name": "B"},
+            {
+                "id": "s",
+                "type": "softwareSystem",
+                "name": "S",
+                "nodes": [{"id": "c", "type": "container", "name": "C"}],
+            },
+        ],
+        "relations": [{"from": "a", "to": "c", "type": "uses"}],
+        "views": [
+            {
+                "id": "ctx",
+                "title": "Contexto",
+                "include": [{"type": "person"}, {"type": "softwareSystem"}],
+                "layout": {
+                    "direction": "down",
+                    "placements": [
+                        {"node": "a", "rank": 0, "order": 0},
+                        {"node": "b", "rank": 0, "order": 1},
+                        {"node": "s", "rank": 1, "order": 0},
+                    ],
+                },
+            }
+        ],
+    }
+    c1 = next(v for v in drawio_views(load(json.dumps(crudo))) if v["level"] == "C1")
+    root = ET.fromstring(c1["xml"])
+    geo = {}
+    for celda in root.iter("mxCell"):
+        g = celda.find("mxGeometry")
+        if celda.get("id") and g is not None:
+            geo[celda.get("id")] = g
+    for obj in root.iter("object"):
+        g = obj.find("mxCell/mxGeometry")
+        if obj.get("id") and g is not None:
+            geo[obj.get("id")] = g
+
+    a, b = geo.get("a"), geo.get("b")
+    assert a is not None and b is not None
+    assert a.get("y") == b.get("y"), "the two actors were authored side by side"
+    assert a.get("x") != b.get("x")
