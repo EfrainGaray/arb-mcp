@@ -1,13 +1,17 @@
 # Making diagrams with arb-mcp, from any agent
 
-Install the server, point an agent at it, and ask for the diagrams. The agent
-does the thinking; these tools are the ground truth. Nothing here is specific to
-one host — the two calls below are the whole recipe, and they are the same from
-Claude Code, Codex, Kiro, a shell script or CI.
+Install the server, point an agent at it, and work spec first: the design is
+written and validated, and the diagrams fall out of it. The agent does the
+thinking; these tools are the ground truth, and they are the same from Claude
+Code, Codex, Kiro, a shell script or CI.
 
-Every command shown here was run against the server in this repo. The diagrams of
-arb-mcp's own architecture in `examples/out/` were produced exactly this way, by
-the script this page ends with.
+**The spec is the artefact. A diagram is a projection of it**, generated on
+demand and discarded without loss. Section 3 is that method end to end, for an
+agent starting from an empty file.
+
+Every command and every output on this page was run against the server in this
+repo. The diagrams of arb-mcp's own architecture in `examples/out/` were produced
+exactly this way.
 
 ## 1. Install
 
@@ -43,7 +47,76 @@ Confirm it is wired up by asking the agent to list its tools; five must appear:
 `describe_contract`, `build_model_tool`, `validate_model`, `convert_model` and
 `check_catalog`.
 
-## 3. The two calls
+## 3. The spec comes first, the pictures come out of it
+
+**Never draw first.** The order is not a style preference — a picture drawn
+before the design is agreed is a drawing, and it starts rotting the moment it is
+saved. The spec is the artefact; every diagram is a projection of it, generated
+on demand and thrown away without loss.
+
+An agent starting from nothing walks four steps. Only the second one is
+reasoning; the other three are deterministic and the server answers them.
+
+**Step 1 — learn the contract.** `describe_contract()` returns the allowed node
+and relation types, the normative JSON Schema, and which surface is canonical.
+An agent that calls it does not have to guess the shape:
+
+    nodeTypes: person, softwareSystem, container, component, deploymentNode,
+               infrastructureNode, decision
+    relationTypes: uses, affects
+
+**Step 2 — draft the design.** This is the agent's own work: read the epic, the
+code, the interviews, and write `nodes` and `relations`. Nothing else in the
+flow involves judgement.
+
+**Step 3 — turn the draft into a spec, and hold it to the rules.**
+`build_model_tool(nodes, relations, name)` injects the fixed type spec, holds the
+draft to the schema and returns the model together with its verdict. A first
+draft usually does not pass, and that is the tool working:
+
+```
+build_model_tool -> ok: True | may_merge: False | hallazgos: 5
+    ERROR   model.softwareSystem.documentation  tienda
+    ERROR   model.softwareSystem.decisions      tienda
+    WARNING model.person.description            cliente
+    WARNING model.softwareSystem.description    tienda
+```
+
+`ok: True` means the draft became a valid model; `may_merge: False` means the
+design has defects the rules can name. A system with containers and no
+documentation, and no decision backing it, is rejected on purpose: if the design
+does not say *why*, there is nothing worth drawing. The agent fixes those and
+calls again until `may_merge` is true. That loop is the whole method.
+
+**Step 4 — only now, the surfaces.** `convert_model(source, to)`. Ask for
+`structurizr` first if the spec is what goes in the repository — it is text, it
+diffs, it reviews:
+
+```
+workspace "Tienda" {
+    model {
+        cliente = person "Cliente"
+        tienda = softwareSystem "Tienda" {
+            web = container "Web" "" "Astro"
+        }
+        cliente -> web "Compra" "HTTPS"
+    }
+    views {
+        systemLandscape { include * ; autolayout lr }
+        container tienda { include * ; autolayout lr }
+    }
+}
+```
+
+Then `drawio` for the editable diagrams and `mermaid` for what renders inline on
+GitHub and GitLab. All three come from the same validated model, so a diagram
+and its verdict cannot drift apart.
+
+**What to keep in version control:** the spec. `examples/arb-mcp.json` is 14 KB
+of reviewable text; the nine files in `examples/out/` are regenerated from it
+with two calls. If they ever disagree, the spec wins and the exports get rebuilt.
+
+## The two calls, in detail
 
 A model is a JSON document against the normative schema, or Structurizr DSL —
 the format is detected. Ask `describe_contract()` first if you are drafting one

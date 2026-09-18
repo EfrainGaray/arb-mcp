@@ -61,10 +61,15 @@ the version or the changelog by hand.
 
 ## Making diagrams, from any agent
 
-Install it, point Claude Code, Codex, Kiro or any MCP host at it, and ask:
-[docs/DIAGRAMS.md](docs/DIAGRAMS.md) is the whole recipe — two calls, and what
-comes back. The C1/C2/C3 views of arb-mcp's own architecture in `examples/out/`
-were produced that way, from `examples/arb-mcp.json`.
+Spec first, pictures second. [docs/DIAGRAMS.md](docs/DIAGRAMS.md) is the method
+end to end for an agent starting from an empty file: learn the contract, draft
+the design, hold it to the gate until it passes, and only then ask for the
+Structurizr DSL, the drawio views and the Mermaid. Works from Claude Code,
+Codex, Kiro, a script, or curl against `/mcp/mcp`.
+
+The C1/C2/C3 views of arb-mcp's own architecture in `examples/out/` were produced
+that way, from `examples/arb-mcp.json` — which is the artefact; the exports are
+regenerated from it.
 
 ## The tools (how Kiro uses it)
 
