@@ -95,9 +95,8 @@ documentation, and no decision backing it, is rejected on purpose: if the design
 does not say *why*, there is nothing worth drawing. The agent fixes those and
 calls again until `may_merge` is true. That loop is the whole method.
 
-**Step 4 — only now, the surfaces.** `convert_model(source, to)`. Ask for
-`structurizr` first if the spec is what goes in the repository — it is text, it
-diffs, it reviews:
+**Step 4 — only now, the surfaces.** `convert_model(source, to)`. The DSL is the
+most readable of them, so it is the one to look at first:
 
 ```
 workspace "Tienda" {
@@ -119,8 +118,29 @@ Then `drawio` for the editable diagrams and `mermaid` for what renders inline on
 GitHub and GitLab. All three come from the same validated model, so a diagram
 and its verdict cannot drift apart.
 
-**What to keep in version control:** the spec. `examples/arb-mcp.json` is 14 KB
-of reviewable text. The seven exports beside it in `examples/out/` — three
+**Keep the JSON, not the DSL.** Structurizr DSL has nowhere to put a `docs`
+entry, a `decision` node or the declared `scope`, so exporting to it drops all
+three — silently, because
+`lost` reports what the parser could not READ, not what the exporter could not
+WRITE. Feed that DSL back in and the model that scored zero findings comes back
+with the documentation and the decisions gone, which is exactly what the gate
+rejects. Measured on this repository's own example:
+
+```
+examples/arb-mcp.json           -> may_merge: True,  0 findings
+examples/out/arb-mcp.dsl        -> may_merge: False, 5 blocking
+   ERROR model.softwareSystem.documentation  arb
+   ERROR model.container.documentation       dominio
+   ERROR model.softwareSystem.decisions      arb
+   ERROR model.container.decisions           dominio
+   ERROR model.scope
+```
+
+The DSL is an export for people and for tools that read Structurizr, and an
+accepted input when it is what you already have. It is not the artefact.
+
+**What to keep in version control:** the canonical JSON. `examples/arb-mcp.json`
+is 14 KB of reviewable text and it is the only surface that carries everything. The seven exports beside it in `examples/out/` — three
 drawio, three Mermaid and the DSL — are regenerated from it by asking the server,
 and `tests/test_examples.py` fails if a single byte drifts. The three `.svg` and
 `index.html` in that directory are rendered afterwards (see the last section) and
@@ -157,6 +177,14 @@ the last paragraph with your own subject:
 > hand me a diagram whose model did not pass.
 >
 > The system to model is: **<your description here>**
+
+That prompt was handed verbatim to a different model (MiniMax-M3, driving this
+server over stdio) against a hospital appointment system it had never seen. It
+took three rounds to get through the gate — a missing decision behind the
+system, ten `affects` relations with no technology, five disconnected
+components — and then produced a C1, a C2 and two C3s. Worth knowing before you
+paste it: an agent will not pass on the first try, and that is the tool doing
+its job.
 
 ### What that prompt actually does
 

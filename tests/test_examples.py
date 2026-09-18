@@ -89,3 +89,33 @@ def test_the_example_declares_no_secrets_and_no_local_paths(fuente: str) -> None
     )
     hallado = sospechoso.search(fuente)
     assert hallado is None, f"the example carries a secret-shaped value: {hallado!r}"
+
+
+def test_the_dsl_export_drops_documentation_and_decisions(fuente: str) -> None:
+    """A round trip through Structurizr DSL is lossy, and the loss is not reported.
+
+    The DSL has nowhere to put a `docs` entry or a `decision` node, so exporting
+    to it drops both. `lost` does not cover this: it reports what the PARSER could
+    not read, and this is the EXPORTER failing to write. A model that scored zero
+    findings comes back rejected, which is why the docs tell a reader to keep the
+    canonical JSON and treat the DSL as an export.
+
+    Pinned deliberately rather than fixed: it is a property of the target format.
+    If the exporter ever learns to carry these, this test is the reminder to say
+    so in docs/DIAGRAMS.md.
+    """
+    assert validate_source(fuente).may_merge
+
+    dsl = (SALIDA / "arb-mcp.dsl").read_text("utf-8")
+    informe = validate_source(dsl)
+
+    assert not informe.may_merge, "if the DSL now carries these, update the docs"
+    perdido = {f.rule for f in informe.blocking}
+    assert perdido == {
+        "model.softwareSystem.documentation",
+        "model.container.documentation",
+        "model.softwareSystem.decisions",
+        "model.container.decisions",
+        "model.scope",  # the DSL has no field for the declared scope either
+    }, perdido
+    assert "docs" not in dsl and "decision" not in dsl
